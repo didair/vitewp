@@ -1,0 +1,28 @@
+---
+import Pagination from '../partials/Pagination.astro';
+import type { WpContentItem } from '../../wordpress/client.js';
+
+interface Props {
+  title?: string;
+  taxonomy?: string;
+  termName?: string;
+  items?: WpContentItem[];
+  page?: number;
+  totalPages?: number;
+}
+
+const { title = 'Archive', taxonomy = '', termName = title, items = [], page = 1, totalPages = 1 } = Astro.props;
+---
+<section>
+  <p style="font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: #666; text-transform: uppercase; letter-spacing: .08em;">{taxonomy}</p>
+  <h1>{termName}</h1>
+  <div>
+    {items.map((item) => (
+      <article>
+        <h2><a href={new URL(item.link).pathname}>{item.title.rendered}</a></h2>
+        {item.excerpt?.rendered && <div set:html={item.excerpt.rendered} />}
+      </article>
+    ))}
+  </div>
+  <Pagination page={page} totalPages={totalPages} />
+</section>

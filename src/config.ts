@@ -1,0 +1,153 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { loadConfigFromFile, loadEnv } from 'vite';
+
+export type WordPressRuntimeMode = 'local' | 'external';
+
+export interface ViteWpConfig {
+  database?: {
+    driver?: 'mysql' | 'mariadb';
+    host?: string;
+    port?: number;
+    name?: string;
+    user?: string;
+    password?: string;
+    tablePrefix?: string;
+  };
+  wordpress?: {
+    mode?: WordPressRuntimeMode;
+    url?: string;
+    docroot?: string;
+    contentDir?: string;
+  };
+  composer?: {
+    install?: boolean;
+    wordpressPackage?: string;
+  };
+  templates?: {
+    directory?: string;
+  };
+  types?: {
+    output?: string;
+  };
+  dev?: {
+    phpHost?: string;
+    phpPort?: number;
+    astroHost?: string;
+    astroPort?: number;
+  };
+}
+
+export interface LoadedViteWpConfig {
+  root: string;
+  configFile?: string;
+  database: {
+    driver: 'mysql' | 'mariadb';
+    host: string;
+    port: number;
+    name: string;
+    user: string;
+    password: string;
+    tablePrefix: string;
+  };
+  wordpress: {
+    mode: WordPressRuntimeMode;
+    url: string;
+    docroot: string;
+    contentDir: string;
+  };
+  composer: {
+    install: boolean;
+    wordpressPackage: string;
+  };
+  templates: {
+    directory: string;
+  };
+  types: {
+    output: string;
+  };
+  dev: {
+    phpHost: string;
+    phpPort: number;
+    astroHost: string;
+    astroPort: number;
+  };
+}
+
+const configFiles = [
+  'vitewp.config.ts',
+  'vitewp.config.mts',
+  'vitewp.config.js',
+  'vitewp.config.mjs',
+];
+
+export function defineConfig(config: ViteWpConfig): ViteWpConfig {
+  return config;
+}
+
+export async function loadViteWpConfig(root = process.cwd()): Promise<LoadedViteWpConfig> {
+  loadDotEnv(root);
+
+  const configFile = configFiles
+    .map((file) => resolve(root, file))
+    .find((file) => existsSync(file));
+
+  let userConfig: ViteWpConfig = {};
+
+  if (configFile) {
+    const loaded = await loadConfigFromFile(
+      { command: 'serve', mode: 'development' },
+      configFile,
+      root,
+    );
+    userConfig = (loaded?.config ?? {}) as ViteWpConfig;
+  }
+
+  return {
+    root,
+    configFile,
+    database: {
+      driver: userConfig.database?.driver ?? env('WP_DB_DRIVER', 'mysql') as 'mysql' | 'mariadb',
+      host: userConfig.database?.host ?? env('WP_DB_HOST', '127.0.0.1'),
+      port: userConfig.database?.port ?? Number(env('WP_DB_PORT', '3306')),
+      name: userConfig.database?.name ?? env('WP_DB_NAME', 'vitewp'),
+      user: userConfig.database?.user ?? env('WP_DB_USER', 'root'),
+      password: userConfig.database?.password ?? env('WP_DB_PASSWORD', ''),
+      tablePrefix: userConfig.database?.tablePrefix ?? env('WP_DB_TABLE_PREFIX', 'wp_'),
+    },
+    wordpress: {
+      mode: userConfig.wordpress?.mode ?? 'local',
+      url: userConfig.wordpress?.url ?? 'http://localhost:3000',
+      docroot: userConfig.wordpress?.docroot ?? 'wordpress/public',
+      contentDir: userConfig.wordpress?.contentDir ?? 'wordpress/content',
+    },
+    composer: {
+      install: userConfig.composer?.install ?? true,
+      wordpressPackage: userConfig.composer?.wordpressPackage ?? 'johnpbloch/wordpress',
+    },
+    templates: {
+      directory: userConfig.templates?.directory ?? 'src/templates',
+    },
+    types: {
+      output: userConfig.types?.output ?? 'src/wordpress/generated-types.ts',
+    },
+    dev: {
+      phpHost: userConfig.dev?.phpHost ?? env('VITEWP_PHP_HOST', '127.0.0.1'),
+      phpPort: userConfig.dev?.phpPort ?? Number(env('VITEWP_PHP_PORT', '8080')),
+      astroHost: userConfig.dev?.astroHost ?? env('VITEWP_ASTRO_HOST', '127.0.0.1'),
+      astroPort: userConfig.dev?.astroPort ?? Number(env('VITEWP_ASTRO_PORT', '4321')),
+    },
+  };
+}
+
+function env(name: string, fallback: string): string {
+  return process.env[name] ?? fallback;
+}
+
+function loadDotEnv(root: string) {
+  const values = loadEnv(process.env.NODE_ENV ?? 'development', root, '');
+
+  for (const [key, value] of Object.entries(values)) {
+    process.env[key] ??= value;
+  }
+}

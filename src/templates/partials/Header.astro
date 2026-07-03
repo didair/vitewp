@@ -1,0 +1,23 @@
+---
+import { getMenuByLocation, getMenuBySlug } from '../../wordpress/menus.js';
+
+interface Props {
+  location?: string;
+  slug?: string;
+}
+
+const { location = 'primary', slug } = Astro.props;
+const menu = slug ? await getMenuBySlug(slug) : await getMenuByLocation(location);
+---
+<header>
+  <a href="/">ViteWP</a>
+  {menu && (
+    <nav aria-label={menu.name}>
+      <ul>
+        {menu.items.filter((item) => item.parent === 0).map((item) => (
+          <li><a href={item.url}>{item.title}</a></li>
+        ))}
+      </ul>
+    </nav>
+  )}
+</header>

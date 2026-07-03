@@ -3,13 +3,31 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "bin": {
+    "vitewp": "./dist/cli.js"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./astro": "./dist/astro.js"
+  },
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "dev": "tsx src/cli.ts dev",
+    "doctor": "tsx src/cli.ts doctor",
+    "build": "tsc",
+    "preview": "node dist/cli.js doctor",
+    "astro:dev": "astro dev",
+    "astro:check": "astro check",
+    "types": "tsx src/cli.ts types",
+    "smoke": "tsx src/cli.ts smoke"
+  },
+  "dependencies": {
+    "astro": "^7.0.6",
+    "vite": "^8.1.1"
   },
   "devDependencies": {
-    "typescript": "~6.0.2",
-    "vite": "^8.1.1"
+    "@astrojs/check": "^0.9.9",
+    "@types/node": "^24.10.2",
+    "tsx": "^4.21.0",
+    "typescript": "~6.0.2"
   }
 }
