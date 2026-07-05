@@ -11,7 +11,17 @@ export default function vitewp(_options: ViteWpAstroOptions = {}): AstroIntegrat
   return {
     name: 'vitewp',
     hooks: {
-      'astro:config:setup': ({ command, config, injectRoute, addDevToolbarApp, logger }) => {
+      'astro:config:setup': ({ command, config, injectRoute, addDevToolbarApp, logger, updateConfig }) => {
+        if (isSourceIntegration()) {
+          updateConfig({
+            vite: {
+              resolve: {
+                alias: sourceAliases(),
+              },
+            },
+          });
+        }
+
         if (!hasProjectCatchAllRoute(fileURLToPath(config.root))) {
           injectRoute({
             pattern: '/[...slug]',
@@ -61,4 +71,28 @@ function getDevToolbarEntrypoint() {
   }
 
   return new URL('./dev-toolbar/vitewp-toolbar.js', import.meta.url);
+}
+
+function isSourceIntegration() {
+  return fileURLToPath(import.meta.url).endsWith('/src/astro.ts');
+}
+
+function sourceAliases() {
+  return [
+    alias('vite-wp/wordpress/templates', './wordpress/templates.ts'),
+    alias('vite-wp/wordpress/client', './wordpress/client.ts'),
+    alias('vite-wp/wordpress/menus', './wordpress/menus.ts'),
+    alias('vite-wp/wordpress/schemas', './wordpress/schemas.ts'),
+    alias('vite-wp/wordpress', './wordpress/index.ts'),
+    alias('vite-wp/content', './content.ts'),
+    alias('vite-wp/astro', './astro.ts'),
+    alias('vite-wp', './index.ts'),
+  ];
+}
+
+function alias(find: string, replacement: string) {
+  return {
+    find,
+    replacement: fileURLToPath(new URL(replacement, import.meta.url)),
+  };
 }
