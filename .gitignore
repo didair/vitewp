@@ -30,6 +30,8 @@ dist-ssr
 # ViteWP generated/runtime files
 .vitewp/
 wordpress/public/
+wordpress/content/mu-plugins/vitewp-bridge.php
+wordpress/content/themes/vitewp/
 wordpress/content/uploads/
 wordpress/content/debug.log
 .astro/

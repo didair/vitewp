@@ -1,6 +1,7 @@
-import { mkdirSync, symlinkSync, writeFileSync, existsSync, lstatSync } from 'node:fs';
+import { cpSync, existsSync, lstatSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import type { LoadedViteWpConfig } from '../config.js';
 
 export function writeWordPressConfig(config: LoadedViteWpConfig) {
@@ -13,6 +14,7 @@ export function writeWordPressConfig(config: LoadedViteWpConfig) {
   mkdirSync(join(contentDir, 'plugins'), { recursive: true });
   mkdirSync(join(contentDir, 'mu-plugins'), { recursive: true });
   mkdirSync(join(contentDir, 'uploads'), { recursive: true });
+  ensureDefaultContentFiles(contentDir);
   ensureContentSymlink(docroot, contentDir);
 
   writeFileSync(wpConfigPath, renderWpConfig(config, publicUrl, contentDir), 'utf8');
@@ -91,4 +93,21 @@ function ensureContentSymlink(docroot: string, contentDir: string) {
 
   const target = relative(dirname(link), contentDir);
   symlinkSync(target, link, 'dir');
+}
+
+function ensureDefaultContentFiles(contentDir: string) {
+  const packageContentDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../starter/wordpress/content');
+
+  copyIfMissing(
+    join(packageContentDir, 'mu-plugins/vitewp-bridge.php'),
+    join(contentDir, 'mu-plugins/vitewp-bridge.php'),
+  );
+  copyIfMissing(join(packageContentDir, 'themes/vitewp'), join(contentDir, 'themes/vitewp'));
+}
+
+function copyIfMissing(source: string, destination: string) {
+  if (existsSync(destination) || !existsSync(source)) return;
+
+  mkdirSync(dirname(destination), { recursive: true });
+  cpSync(source, destination, { recursive: true });
 }
