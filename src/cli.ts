@@ -39,5 +39,8 @@ function printHelp() {
   vite-wp dev       Start the local WordPress + Astro development runtime
   vite-wp doctor    Check the current project setup
   vite-wp types     Generate TypeScript types from WordPress metadata
-  vite-wp smoke     Verify the running ViteWP dev runtime\n`);
+  vite-wp smoke     Verify the running ViteWP dev runtime
+
+Options:
+  vite-wp init --no-install   Create files without running package install\n`);
 }

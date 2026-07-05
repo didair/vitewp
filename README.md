@@ -25,11 +25,12 @@ ViteWP is bring-your-own database. It does not start MySQL for you.
 mkdir my-site
 cd my-site
 npm init -y
-npm install vite-wp astro typescript @astrojs/check
 npx vite-wp init
 cp .env.example .env
 npm run dev
 ```
+
+`vite-wp init` creates the starter files, adds the needed package dependencies, and runs install.
 
 Edit `.env` with your database credentials, then open:
 
