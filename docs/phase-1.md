@@ -4,10 +4,10 @@ Phase 1 proves the core ViteWP loop: this project is the local WordPress instanc
 
 ## Completed capabilities
 
-- `vitewp dev` starts Composer-managed WordPress, PHP, Astro, and the ViteWP proxy.
-- `vitewp doctor` validates the local project setup.
-- `vitewp smoke` verifies the running dev runtime.
-- `vitewp types` generates the first TypeScript metadata layer.
+- `vite-wp dev` starts Composer-managed WordPress, PHP, Astro, and the ViteWP proxy.
+- `vite-wp doctor` validates the local project setup.
+- `vite-wp smoke` verifies the running dev runtime.
+- `vite-wp types` generates the first TypeScript metadata layer.
 - WordPress core is installed by Composer and pinned to WordPress 7.
 - The generated WordPress docroot is ignored by git.
 - WordPress uses a ViteWP placeholder theme so wp-admin remains healthy.

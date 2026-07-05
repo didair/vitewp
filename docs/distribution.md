@@ -39,7 +39,7 @@ Files that belong to the user project:
 A future command should make framework updates explicit:
 
 ```bash
-vitewp upgrade
+vite-wp upgrade
 ```
 
 It should report available npm and Composer updates, explain breaking changes, and avoid overwriting user templates without a clear diff.

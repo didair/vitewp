@@ -26,7 +26,7 @@ mkdir my-site
 cd my-site
 npm init -y
 npm install vite-wp astro typescript @astrojs/check
-npx vitewp init
+npx vite-wp init
 cp .env.example .env
 npm run dev
 ```

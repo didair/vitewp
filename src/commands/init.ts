@@ -58,9 +58,9 @@ function updatePackageJson(root: string) {
 
   packageJson.type ??= 'module';
   packageJson.scripts ??= {};
-  packageJson.scripts.dev ??= 'vitewp dev';
-  packageJson.scripts.doctor ??= 'vitewp doctor';
-  packageJson.scripts.types ??= 'vitewp types';
+  packageJson.scripts.dev ??= 'vite-wp dev';
+  packageJson.scripts.doctor ??= 'vite-wp doctor';
+  packageJson.scripts.types ??= 'vite-wp types';
   packageJson.scripts.check ??= 'astro check';
 
   writeFileSync(file, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf8');

@@ -42,4 +42,4 @@ WP_DB_TABLE_PREFIX=wp_
 
 ## Doctor checks
 
-`vitewp doctor` validates that database settings are present and printable without requiring a Node database driver. Later versions can add optional connection checks, but the first goal is to keep the core dependency-light and not force one database package on every project.
+`vite-wp doctor` validates that database settings are present and printable without requiring a Node database driver. Later versions can add optional connection checks, but the first goal is to keep the core dependency-light and not force one database package on every project.

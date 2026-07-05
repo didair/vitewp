@@ -57,7 +57,7 @@ From there, the developer should have a project-owned WordPress install, Astro, 
 
 ### One local command
 
-`vitewp dev` should orchestrate the development stack:
+`vite-wp dev` should orchestrate the development stack:
 
 - install/validate WordPress from Composer,
 - start the local PHP/WordPress runtime,
@@ -152,8 +152,8 @@ ViteWP should support:
 - supporting WordPress plugins installed through Composer,
 - supporting mu-plugins and project PHP libraries,
 - validating PHP autoload paths,
-- exposing Composer/plugin health in `vitewp doctor`,
-- and making Composer-based projects work with the same `vitewp dev` and `vitewp build` flows.
+- exposing Composer/plugin health in `vite-wp doctor`,
+- and making Composer-based projects work with the same `vite-wp dev` and `vite-wp build` flows.
 
 The tool should not replace Composer. It should coordinate with Composer and make PHP dependency state visible from the ViteWP developer experience. The repository should commit `composer.json` and `composer.lock`, not the downloaded WordPress core files.
 
@@ -201,7 +201,7 @@ ViteWP should generate and maintain types for:
 Generated types should be deterministic, checked into the project when useful, and refreshable with one command:
 
 ```bash
-vitewp types
+vite-wp types
 ```
 
 The system should support both REST-first and GraphQL-first projects. WPGraphQL can be a preferred rich-schema path, but REST must remain supported because it is native to WordPress.
@@ -477,14 +477,14 @@ The CLI is the primary interface.
 
 Planned commands:
 
-- `vitewp dev` — run the full Astro + WordPress development environment.
-- `vitewp build` — build Astro and WordPress-side assets.
-- `vitewp preview` — preview the production build.
-- `vitewp types` — generate TypeScript types from WordPress sources.
-- `vitewp composer` — run or proxy selected Composer workflows where useful.
-- `vitewp wp` — proxy selected WP-CLI operations or provide a consistent wrapper.
-- `vitewp doctor` — validate local setup, WordPress connectivity, Composer, plugins, schemas, routes, templates, and config.
-- `vitewp init` — add ViteWP to an existing Astro project.
+- `vite-wp dev` — run the full Astro + WordPress development environment.
+- `vite-wp build` — build Astro and WordPress-side assets.
+- `vite-wp preview` — preview the production build.
+- `vite-wp types` — generate TypeScript types from WordPress sources.
+- `vite-wp composer` — run or proxy selected Composer workflows where useful.
+- `vite-wp wp` — proxy selected WP-CLI operations or provide a consistent wrapper.
+- `vite-wp doctor` — validate local setup, WordPress connectivity, Composer, plugins, schemas, routes, templates, and config.
+- `vite-wp init` — add ViteWP to an existing Astro project.
 
 ### WordPress bridge
 
@@ -648,7 +648,7 @@ The preferred distribution model should separate stable package-owned behavior f
 
 Generated projects can include a meaningful folder structure and starter files, but long-lived behavior should live in versioned npm/Composer packages wherever possible. This lets ViteWP ship fixes and new capabilities without overwriting a user's templates.
 
-A future `vitewp upgrade` command should:
+A future `vite-wp upgrade` command should:
 
 - report available npm package updates,
 - report available Composer package updates,
@@ -670,8 +670,8 @@ Focus: prove the groundbreaking loop: the ViteWP project is the local WordPress 
 - Add the Astro integration.
 - Add a default `composer.json` that installs a pinned WordPress core version.
 - Install WordPress core into a generated docroot that is ignored by git.
-- Start a local PHP/WordPress runtime from `vitewp dev`.
-- Start Astro from `vitewp dev`.
+- Start a local PHP/WordPress runtime from `vite-wp dev`.
+- Start Astro from `vite-wp dev`.
 - Expose one unified local origin for WordPress admin, REST, media, previews, and Astro-rendered frontend pages.
 - Own the dev proxy in ViteWP rather than depending solely on Vite's proxy config, because the proxy is the runtime boundary between WordPress and Astro.
 - Add the catch-all WordPress route.
@@ -679,7 +679,7 @@ Focus: prove the groundbreaking loop: the ViteWP project is the local WordPress 
 - Proxy REST API and media internally.
 - Generate basic REST-derived types.
 - Provide typed content fetch helpers.
-- Add `vitewp doctor`.
+- Add `vite-wp doctor`.
 - Document local setup assumptions.
 
 ### Phase 2 — Composer and local runtime
@@ -695,7 +695,7 @@ Focus: make PHP/WordPress dependencies feel native and make the project itself r
 - Keep MySQL/MariaDB bring-your-own by default.
 - Consider SQLite as an optional future local convenience, not the default WordPress-compatible path.
 - Support Composer-installed plugins and mu-plugins.
-- Add Composer status to `vitewp doctor`.
+- Add Composer status to `vite-wp doctor`.
 - Define the preferred single-runtime local development path.
 - Add WordPress health checks.
 - Add plugin installation/activation checks.

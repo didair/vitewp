@@ -35,9 +35,9 @@ switch (command) {
 }
 
 function printHelp() {
-  console.log(`vitewp\n\nUsage:\n  vitewp init      Copy starter project files into the current directory
-  vitewp dev       Start the local WordPress + Astro development runtime
-  vitewp doctor    Check the current project setup
-  vitewp types     Generate TypeScript types from WordPress metadata
-  vitewp smoke     Verify the running ViteWP dev runtime\n`);
+  console.log(`vite-wp\n\nUsage:\n  vite-wp init      Copy starter project files into the current directory
+  vite-wp dev       Start the local WordPress + Astro development runtime
+  vite-wp doctor    Check the current project setup
+  vite-wp types     Generate TypeScript types from WordPress metadata
+  vite-wp smoke     Verify the running ViteWP dev runtime\n`);
 }

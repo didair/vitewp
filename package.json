@@ -4,7 +4,7 @@
   "version": "0.1.1",
   "type": "module",
   "bin": {
-    "vitewp": "dist/cli.js"
+    "vite-wp": "dist/cli.js"
   },
   "exports": {
     ".": {

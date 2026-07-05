@@ -9,7 +9,7 @@ npm run dev
 npm run types
 ```
 
-`vitewp types` reads WordPress metadata from:
+`vite-wp types` reads WordPress metadata from:
 
 ```txt
 /wp-json/vitewp/v1/types

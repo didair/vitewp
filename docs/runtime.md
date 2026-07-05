@@ -9,7 +9,7 @@ npm run dev
 The command currently:
 
 1. loads `vitewp.config.ts`,
-2. runs `vitewp doctor`,
+2. runs `vite-wp doctor`,
 3. runs `composer install` when WordPress core is missing,
 4. generates `wordpress/public/wp-config.php` from ViteWP database settings,
 5. starts PHP's built-in server for WordPress,
@@ -73,7 +73,7 @@ Template debug metadata is only emitted in Astro dev mode.
 
 ## Astro dev toolbar
 
-During `vitewp dev`, the Astro dev toolbar gets a ViteWP panel. Open it on any Astro-rendered frontend route to inspect:
+During `vite-wp dev`, the Astro dev toolbar gets a ViteWP panel. Open it on any Astro-rendered frontend route to inspect:
 
 - the selected ViteWP template,
 - the WordPress route kind,
