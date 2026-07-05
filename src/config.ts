@@ -99,6 +99,9 @@ export async function loadViteWpConfig(root = process.cwd()): Promise<LoadedVite
       { command: 'serve', mode: 'development' },
       configFile,
       root,
+      undefined,
+      undefined,
+      'runner',
     );
     userConfig = (loaded?.config ?? {}) as ViteWpConfig;
   }
