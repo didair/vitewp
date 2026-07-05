@@ -1,5 +1,5 @@
 import { defineConfig } from 'astro/config';
-import vitewp from 'vitewp/astro';
+import vitewp from 'vite-wp/astro';
 
 export default defineConfig({
   output: 'server',

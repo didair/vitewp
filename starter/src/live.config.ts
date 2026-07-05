@@ -1,5 +1,5 @@
 import { defineLiveCollection } from 'astro/content/config';
-import { wpMenuLoader, wpPostTypeLoader, wpRouteLoader } from 'vitewp/content';
+import { wpMenuLoader, wpPostTypeLoader, wpRouteLoader } from 'vite-wp/content';
 import { wpContentItemSchema, wpMenuSchema, wpResolvedRouteSchema } from './wordpress/schemas.js';
 
 export const collections = {

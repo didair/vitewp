@@ -25,7 +25,7 @@ ViteWP is bring-your-own database. It does not start MySQL for you.
 mkdir my-site
 cd my-site
 npm init -y
-npm install vitewp astro typescript @astrojs/check
+npm install vite-wp astro typescript @astrojs/check
 npx vitewp init
 cp .env.example .env
 npm run dev

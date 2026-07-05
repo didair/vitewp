@@ -394,7 +394,7 @@ The project should have one main config file:
 
 ```ts
 // vitewp.config.ts
-import { defineConfig } from "vitewp";
+import { defineConfig } from "vite-wp";
 
 export default defineConfig({
   database: {

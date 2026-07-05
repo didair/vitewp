@@ -27,11 +27,11 @@ The catch-all WordPress route now uses the `routes` live collection before selec
 
 ## Package loaders
 
-ViteWP exposes reusable loaders from `vitewp/content` for future generated projects:
+ViteWP exposes reusable loaders from `vite-wp/content` for future generated projects:
 
 ```ts
 import { defineLiveCollection } from 'astro:content';
-import { wpMenuLoader, wpPostTypeLoader, wpRouteLoader } from 'vitewp/content';
+import { wpMenuLoader, wpPostTypeLoader, wpRouteLoader } from 'vite-wp/content';
 
 export const collections = {
   routes: defineLiveCollection({ loader: wpRouteLoader() }),

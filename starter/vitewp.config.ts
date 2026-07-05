@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitewp';
+import { defineConfig } from 'vite-wp';
 
 export default defineConfig({
   database: {
