@@ -28,6 +28,7 @@ export function runInit() {
   mkdirSync(target, { recursive: true });
   copyDirectory(starter, target, force);
   updatePackageJson(target, packageRoot);
+  ensureGitignore(target);
 
   console.log(`ViteWP project files initialized in ${relative(process.cwd(), target) || '.'}.`);
 
@@ -87,6 +88,52 @@ function updatePackageJson(root: string, packageRoot: string) {
   packageJson.devDependencies['@astrojs/check'] ??= '^0.9.9';
 
   writeFileSync(file, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf8');
+}
+
+function ensureGitignore(root: string) {
+  const file = join(root, '.gitignore');
+
+  if (existsSync(file)) {
+    return;
+  }
+
+  writeFileSync(file, renderGitignore(), 'utf8');
+}
+
+function renderGitignore() {
+  return `# Dependencies
+node_modules/
+vendor/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+dist-ssr/
+
+# ViteWP generated/runtime files
+.vitewp/
+.astro/
+wordpress/public/
+wordpress/content/uploads/
+wordpress/content/debug.log
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+`;
 }
 
 function readOwnPackage(packageRoot: string) {
