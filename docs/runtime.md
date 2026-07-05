@@ -36,7 +36,7 @@ Vite has useful dev-server proxy support, but ViteWP needs the proxy to be a pro
 
 ## WordPress content rendering
 
-The Astro catch-all route now asks WordPress what a URL means through the ViteWP bridge endpoint, then renders the response with glob-loaded Astro templates:
+The package-owned Astro catch-all route asks WordPress what a URL means through the ViteWP bridge endpoint, then renders the response with Astro templates. Project templates in `src/templates` are checked first; package defaults in `vite-wp/defaults/templates` are used when no project override exists:
 
 - `/` respects Settings → Reading and renders either the static front page or latest posts.
 - `/sample-page` resolves as a WordPress page.
@@ -68,7 +68,7 @@ Custom post type archive templates use:
 1. `src/templates/post-types/{postType}/archive.astro`
 2. `src/templates/posts/archive.astro`
 
-Template debug metadata is only emitted in Astro dev mode.
+Template debug metadata is only emitted in Astro dev mode. The toolbar reports whether a matched template came from the project or the `vite-wp` defaults.
 
 
 ## Astro dev toolbar
@@ -102,7 +102,7 @@ ViteWP now covers the first theme-like routing layer:
 - search resolves at `/search?s=query` or `/search/query`,
 - archive pagination resolves with `/page/{number}`,
 - 404s render `src/templates/404.astro`,
-- menus are available through `src/wordpress/menus.ts`.
+- menu helpers are available from `vite-wp/wordpress/menus`.
 
 Template candidates are glob-loaded from `src/templates` instead of read manually from the filesystem. Taxonomy archives use:
 

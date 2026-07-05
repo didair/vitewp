@@ -40,7 +40,7 @@ export const collections = {
 };
 ```
 
-In this monorepo prototype, `src/live.config.ts` imports the same loaders from local source so development works before the package is published.
+Generated projects import these loaders and schemas from the package. ViteWP also ships the reusable WordPress helper modules under `vite-wp/wordpress*`, so projects only need local files for custom behavior.
 
 ## Diagnostics
 

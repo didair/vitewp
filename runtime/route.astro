@@ -2,8 +2,8 @@
 export const prerender = false;
 
 import { getLiveEntry } from 'astro:content';
-import type { WpResolvedRoute } from '../wordpress/client.js';
-import { createTemplateContext, templateCandidates } from '../wordpress/templates.js';
+import type { WpResolvedRoute } from 'vite-wp/wordpress';
+import { createTemplateContext, templateCandidates } from 'vite-wp/wordpress/templates';
 
 type TemplateModule = {
   default: unknown;
@@ -25,9 +25,11 @@ if (!route) {
   Astro.response.statusText = 'Not Found';
 }
 
-const templates = import.meta.glob<TemplateModule>('../templates/**/*.astro');
+const projectTemplates = import.meta.glob<TemplateModule>('/src/templates/**/*.astro');
+const defaultTemplates = import.meta.glob<TemplateModule>('../defaults/templates/**/*.astro');
 let Template: any = null;
 let templatePath = '';
+let templateSource: 'project' | 'vite-wp' | null = null;
 const showDebug = import.meta.env.DEV;
 let context = null;
 
@@ -36,21 +38,29 @@ if (route) {
   candidates = templateCandidates(route);
 
   for (const candidate of candidates) {
-    const path = `../templates/${candidate}`;
-    const loader = templates[path];
+    const projectPath = `/src/templates/${candidate}`;
+    const defaultPath = `../defaults/templates/${candidate}`;
+    const projectLoader = projectTemplates[projectPath];
+    const defaultLoader = defaultTemplates[defaultPath];
+    const loader = projectLoader ?? defaultLoader;
 
     if (loader) {
       Template = (await loader()).default;
       templatePath = candidate;
+      templateSource = projectLoader ? 'project' : 'vite-wp';
       break;
     }
   }
 } else {
   candidates = ['404.astro'];
-  const loader = templates['../templates/404.astro'];
+  const projectLoader = projectTemplates['/src/templates/404.astro'];
+  const defaultLoader = defaultTemplates['../defaults/templates/404.astro'];
+  const loader = projectLoader ?? defaultLoader;
+
   if (loader) {
     Template = (await loader()).default;
     templatePath = '404.astro';
+    templateSource = projectLoader ? 'project' : 'vite-wp';
   }
 }
 
@@ -68,10 +78,11 @@ const toolbarRouteInfo = showDebug ? {
   page: context?.page ?? null,
   totalPages: context?.totalPages ?? null,
   template: templatePath || null,
+  templateSource,
   candidateTemplates: candidates,
 } : null;
 const toolbarRouteInfoJson = toolbarRouteInfo
-  ? JSON.stringify(toolbarRouteInfo).replaceAll('<', '\\u003c')
+  ? JSON.stringify(toolbarRouteInfo).replaceAll('<', '\u003c')
   : '';
 ---
 <html lang="en">
@@ -85,9 +96,7 @@ const toolbarRouteInfoJson = toolbarRouteInfo
   <body>
     <main>
       {Template && context ? (
-        <>
-          <Template {...context} />
-        </>
+        <Template {...context} />
       ) : Template ? (
         <Template slug={slug} />
       ) : (

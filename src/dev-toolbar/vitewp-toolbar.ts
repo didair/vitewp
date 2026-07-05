@@ -14,6 +14,7 @@ interface ViteWpRouteInfo {
   postType: string | null;
   slug: string | null;
   template: string | null;
+  templateSource: 'project' | 'vite-wp' | null;
   totalPages: number | null;
 }
 
@@ -128,6 +129,7 @@ function renderInfo(info: ViteWpRouteInfo) {
     <section class="grid">
       ${row('URL path', info.path)}
       ${row('Selected template', info.template ?? 'No template matched')}
+      ${row('Template source', info.templateSource ?? '—')}
       ${row('Live collection', info.liveCollection ? `${info.liveCollection.collection} → ${info.liveCollection.entryId}` : '—')}
       ${row('Post type', info.postType ?? '—')}
       ${row('Slug', info.slug ?? '—')}

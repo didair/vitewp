@@ -1,7 +1,7 @@
 {
   "name": "vite-wp",
   "private": false,
-  "version": "0.1.5",
+  "version": "0.1.6",
   "type": "module",
   "bin": {
     "vite-wp": "dist/cli.js"
@@ -18,6 +18,26 @@
     "./content": {
       "types": "./dist/content.d.ts",
       "import": "./dist/content.js"
+    },
+    "./wordpress": {
+      "types": "./dist/wordpress/index.d.ts",
+      "import": "./dist/wordpress/index.js"
+    },
+    "./wordpress/client": {
+      "types": "./dist/wordpress/client.d.ts",
+      "import": "./dist/wordpress/client.js"
+    },
+    "./wordpress/menus": {
+      "types": "./dist/wordpress/menus.d.ts",
+      "import": "./dist/wordpress/menus.js"
+    },
+    "./wordpress/templates": {
+      "types": "./dist/wordpress/templates.d.ts",
+      "import": "./dist/wordpress/templates.js"
+    },
+    "./wordpress/schemas": {
+      "types": "./dist/wordpress/schemas.d.ts",
+      "import": "./dist/wordpress/schemas.js"
     }
   },
   "scripts": {
@@ -67,6 +87,8 @@
   },
   "files": [
     "dist",
+    "defaults",
+    "runtime",
     "starter",
     "README.md",
     "LICENSE"

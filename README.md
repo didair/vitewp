@@ -66,24 +66,7 @@ my-site/
 
   src/
     live.config.ts
-    pages/
-      [...slug].astro
-    templates/
-      pages/
-        front-page.astro
-        default.astro
-      posts/
-        single.astro
-        archive.astro
-      taxonomies/
-        taxonomy-[taxonomy].astro
-      search.astro
-      404.astro
-    wordpress/
-      client.ts
-      templates.ts
-      menus.ts
-      generated-types.ts
+    templates/             # optional template overrides
 
   wordpress/
     public/              # Composer-installed WordPress core
@@ -96,14 +79,13 @@ my-site/
 
 ## Templates
 
-The catch-all Astro route asks WordPress what the current URL is, then renders the first matching template from `src/templates`.
+ViteWP ships default templates from the package. Create files in `src/templates` only when you want to override them. Project templates always win over package defaults.
 
 Examples:
 
 ```txt
 src/templates/pages/front-page.astro
 src/templates/pages/page-about.astro
-src/templates/pages/default.astro
 src/templates/posts/single.astro
 src/templates/posts/archive.astro
 src/templates/taxonomies/category.astro

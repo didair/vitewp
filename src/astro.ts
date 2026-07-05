@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { AstroIntegration } from 'astro';
 
@@ -10,7 +11,15 @@ export default function vitewp(_options: ViteWpAstroOptions = {}): AstroIntegrat
   return {
     name: 'vitewp',
     hooks: {
-      'astro:config:setup': ({ command, addDevToolbarApp, logger }) => {
+      'astro:config:setup': ({ command, config, injectRoute, addDevToolbarApp, logger }) => {
+        if (!hasProjectCatchAllRoute(fileURLToPath(config.root))) {
+          injectRoute({
+            pattern: '/[...slug]',
+            entrypoint: getDefaultRouteEntrypoint(),
+            prerender: false,
+          });
+        }
+
         if (command === 'dev') {
           addDevToolbarApp({
             id: 'vitewp',
@@ -24,6 +33,24 @@ export default function vitewp(_options: ViteWpAstroOptions = {}): AstroIntegrat
       },
     },
   };
+}
+
+function hasProjectCatchAllRoute(root: string) {
+  return [
+    join(root, 'src/pages/[...slug].astro'),
+    join(root, 'src/pages/[...slug].ts'),
+    join(root, 'src/pages/[...slug].js'),
+  ].some((file) => existsSync(file));
+}
+
+function getDefaultRouteEntrypoint() {
+  const sourceEntrypoint = new URL('../runtime/route.astro', import.meta.url);
+
+  if (existsSync(fileURLToPath(sourceEntrypoint))) {
+    return sourceEntrypoint;
+  }
+
+  return new URL('../runtime/route.astro', import.meta.url);
 }
 
 function getDevToolbarEntrypoint() {
