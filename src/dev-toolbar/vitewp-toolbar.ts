@@ -3,6 +3,11 @@ import { defineToolbarApp } from 'astro/toolbar';
 interface ViteWpRouteInfo {
   candidateTemplates: string[];
   kind: string;
+  liveCollection: {
+    collection: string;
+    entryId: string;
+    cacheHint: unknown;
+  } | null;
   matched: boolean;
   page: number | null;
   path: string;
@@ -123,6 +128,7 @@ function renderInfo(info: ViteWpRouteInfo) {
     <section class="grid">
       ${row('URL path', info.path)}
       ${row('Selected template', info.template ?? 'No template matched')}
+      ${row('Live collection', info.liveCollection ? `${info.liveCollection.collection} → ${info.liveCollection.entryId}` : '—')}
       ${row('Post type', info.postType ?? '—')}
       ${row('Slug', info.slug ?? '—')}
       ${row('Pagination', paginationLabel(info))}

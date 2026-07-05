@@ -8,7 +8,33 @@ export async function assertPortAvailable(host: string, port: number, label: str
   }
 }
 
-function isPortAvailable(host: string, port: number): Promise<boolean> {
+export async function resolveInternalPort(host: string, port: number) {
+  if (port > 0) {
+    const available = await isPortAvailable(host, port);
+    if (available) {
+      return port;
+    }
+  }
+
+  return findAvailablePort(host);
+}
+
+function findAvailablePort(host: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+
+    server.once('error', reject);
+    server.once('listening', () => {
+      const address = server.address();
+      const port = typeof address === 'object' && address ? address.port : 0;
+      server.close(() => resolve(port));
+    });
+
+    server.listen(0, host);
+  });
+}
+
+export function isPortAvailable(host: string, port: number): Promise<boolean> {
   return new Promise((resolve) => {
     const server = net.createServer();
 

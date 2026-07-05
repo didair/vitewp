@@ -14,15 +14,15 @@ The command currently:
 4. generates `wordpress/public/wp-config.php` from ViteWP database settings,
 5. starts PHP's built-in server for WordPress,
 6. starts Astro's dev server,
-7. starts the unified ViteWP proxy.
+7. starts the unified ViteWP proxy on the only developer-facing port.
 
-Default URLs:
+Default developer URL:
 
-- Unified site: `http://localhost:3000`
-- WordPress/PHP internal server: `http://127.0.0.1:8080`
-- Astro internal server: `http://127.0.0.1:4321`
+- Local site: `http://localhost:3000`
 
-The proxy routes WordPress admin/API/media/PHP requests to WordPress and all other frontend page requests to Astro.
+WordPress/PHP and Astro still run as separate local processes, but their listeners are internal implementation details. By default ViteWP binds them to `127.0.0.1` and auto-selects available ports. The CLI only prints those internal URLs when run with `--verbose` or `VITEWP_VERBOSE=1`.
+
+The proxy routes WordPress admin/API/media/PHP requests to WordPress and all other frontend page requests to Astro, so the browser only needs the unified local site URL.
 
 ## Database
 
@@ -82,6 +82,8 @@ During `vitewp dev`, the Astro dev toolbar gets a ViteWP panel. Open it on any A
 - and the template hierarchy candidates considered for the request.
 
 This gives us a clean home for future route diagnostics without rendering debug panels into the page itself.
+
+The first ViteWP panel also shows the Astro Live Collection used to resolve the current route.
 
 
 ## Permalinks

@@ -66,7 +66,7 @@ From there, the developer should have a project-owned WordPress install, Astro, 
 - proxy API, media, preview, and admin routes where needed,
 - watch WordPress-side entrypoints,
 - generate or refresh types,
-- expose useful diagnostics in one terminal output,
+- expose the one local site URL prominently and keep internal PHP/Astro ports as verbose diagnostics,
 - and fail with actionable errors when dependencies are missing.
 
 The developer should not need to understand every moving part before building a page.
@@ -93,6 +93,7 @@ ViteWP should add the WordPress layer:
 - route metadata from WordPress,
 - preview handling,
 - template hierarchy resolution,
+- Astro Live Collection loaders for WordPress data,
 - typed data helpers,
 - WordPress-aware redirects and slugs,
 - block/plugin asset builds,
@@ -130,7 +131,7 @@ The tool should support:
 - surfacing WordPress health checks in the JS terminal,
 - and creating a predictable boundary between WordPress admin/editor and the Astro frontend.
 
-The preferred local path should aim for a single runtime experience where possible: one project, one command, and one coherent process boundary for WordPress + Astro development instead of requiring separate application containers or disconnected services. ViteWP should expose one public local origin where WordPress admin, REST routes, media, previews, and Astro frontend routes all work together. The database should be bring-your-own by default, matching WordPress expectations: ViteWP configures and validates database settings, but does not need to own or start MySQL/MariaDB.
+The preferred local path should aim for a single runtime experience where possible: one project, one command, and one coherent process boundary for WordPress + Astro development instead of requiring separate application containers or disconnected services. ViteWP should expose one public local origin where WordPress admin, REST routes, media, previews, and Astro frontend routes all work together. Internal WordPress/PHP and Astro listeners may still exist on loopback ports, but they should be implementation details with auto-selected ports by default, not URLs developers are expected to use. The database should be bring-your-own by default, matching WordPress expectations: ViteWP configures and validates database settings, but does not need to own or start MySQL/MariaDB.
 
 If a team chooses to run ViteWP inside Docker or another containerized environment, it should be painless, but Docker should not be the assumed architecture or the center of the plan.
 
@@ -407,7 +408,7 @@ export default defineConfig({
   },
   wordpress: {
     mode: "local",
-    url: "http://localhost:8080",
+    url: "http://localhost:3000",
   },
   composer: {
     install: true,

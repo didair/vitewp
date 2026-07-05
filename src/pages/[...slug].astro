@@ -1,7 +1,8 @@
 ---
 export const prerender = false;
 
-import { resolveWordPressRoute } from '../wordpress/client.js';
+import { getLiveEntry } from 'astro:content';
+import type { WpResolvedRoute } from '../wordpress/client.js';
 import { createTemplateContext, templateCandidates } from '../wordpress/templates.js';
 
 type TemplateModule = {
@@ -10,7 +11,13 @@ type TemplateModule = {
 
 const slug = Astro.params.slug ?? '';
 const routePath = `${Astro.url.pathname}${Astro.url.search}`;
-const route = await resolveWordPressRoute(routePath);
+const routeResult = await getLiveEntry('routes', { path: routePath });
+
+if (routeResult.error && routeResult.error.name !== 'LiveEntryNotFoundError') {
+  throw routeResult.error;
+}
+
+const route = routeResult.entry?.data as WpResolvedRoute | undefined;
 let candidates: string[] = [];
 
 if (!route) {
@@ -51,6 +58,11 @@ const toolbarRouteInfo = showDebug ? {
   path: routePath,
   matched: Boolean(route),
   kind: context?.route.kind ?? '404',
+  liveCollection: routeResult.entry ? {
+    collection: 'routes',
+    entryId: routeResult.entry.id,
+    cacheHint: routeResult.cacheHint ?? null,
+  } : null,
   postType: context?.postType ?? null,
   slug: context?.slug ?? null,
   page: context?.page ?? null,

@@ -3,18 +3,20 @@ import { ensureComposerInstall } from '../runtime/composer.js';
 import { startAstroServer, stopAstroServer } from '../runtime/astro.js';
 import { startPhpServer } from '../runtime/php.js';
 import { waitForExit } from '../runtime/process.js';
-import { assertPortAvailable } from '../runtime/ports.js';
+import { assertPortAvailable, resolveInternalPort } from '../runtime/ports.js';
 import { startUnifiedProxy } from '../runtime/proxy.js';
 import { phpServerUrl, writeWordPressConfig } from '../runtime/wp-config.js';
 import { runDoctorChecks } from './doctor.js';
 
 export async function runDev() {
   const config = await loadViteWpConfig();
+  const verbose = isVerbose();
+  if (verbose) {
+    process.env.VITEWP_VERBOSE = '1';
+  }
 
   console.log('ViteWP dev runtime');
-  console.log(`- public URL: ${config.wordpress.url}`);
-  console.log(`- WordPress URL: ${phpServerUrl(config)}`);
-  console.log(`- Astro URL: http://${config.dev.astroHost}:${config.dev.astroPort}`);
+  console.log(`- local site: ${config.wordpress.url}`);
   console.log(`- WordPress docroot: ${config.wordpress.docroot}`);
   console.log(`- WordPress content: ${config.wordpress.contentDir}`);
   console.log(`- templates: ${config.templates.directory}`);
@@ -30,15 +32,12 @@ export async function runDev() {
     return;
   }
 
-  process.env.VITEWP_PUBLIC_URL = config.wordpress.url;
-  process.env.VITEWP_PHP_URL = phpServerUrl(config);
-
   try {
     await ensureComposerInstall(config);
     writeWordPressConfig(config);
     await stopAstroServer(config);
-    await assertPortAvailable(config.dev.phpHost, config.dev.phpPort, 'WordPress/PHP');
-    await assertPortAvailable(config.dev.astroHost, config.dev.astroPort, 'Astro');
+    config.dev.phpPort = await resolveInternalPort(config.dev.phpHost, config.dev.phpPort);
+    config.dev.astroPort = await resolveInternalPort(config.dev.astroHost, config.dev.astroPort);
     const publicUrl = new URL(config.wordpress.url);
     await assertPortAvailable(publicUrl.hostname, Number(publicUrl.port || 3000), 'ViteWP proxy');
   } catch (error) {
@@ -47,18 +46,27 @@ export async function runDev() {
     return;
   }
 
+  process.env.VITEWP_PUBLIC_URL = config.wordpress.url;
+  process.env.VITEWP_PHP_URL = phpServerUrl(config);
+
   console.log('');
-  console.log(`✓ WordPress/PHP starting at ${phpServerUrl(config)}`);
-  console.log(`✓ Astro starting at http://${config.dev.astroHost}:${config.dev.astroPort}`);
+  if (verbose) {
+    console.log(`✓ WordPress/PHP internal server: ${phpServerUrl(config)}`);
+    console.log(`✓ Astro internal server: http://${config.dev.astroHost}:${config.dev.astroPort}`);
+  }
 
   const php = startPhpServer(config);
   const astro = await startAstroServer(config);
   const proxy = await startUnifiedProxy(config);
 
-  console.log(`✓ Unified ViteWP proxy running at ${proxy.url}`);
+  console.log(`✓ ViteWP ready at ${proxy.url}`);
   console.log('Press Ctrl+C to stop.');
   console.log('');
 
   await waitForExit([php, astro]);
   await proxy.stop();
+}
+
+function isVerbose() {
+  return process.argv.includes('--verbose') || process.env.VITEWP_VERBOSE === '1';
 }

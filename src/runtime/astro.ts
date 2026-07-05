@@ -38,7 +38,9 @@ export async function startAstroServer(config: LoadedViteWpConfig): Promise<Mana
     },
   );
 
-  const logs = spawnManaged('astro', npx, ['astro', 'dev', 'logs', '--follow'], config.root);
+  const logs = spawnManaged('astro', npx, ['astro', 'dev', 'logs', '--follow'], config.root, {
+    shouldLogLine: (line) => isVerbose() || !line.includes('Local    http://'),
+  });
 
   return {
     ...logs,
@@ -52,6 +54,10 @@ export async function startAstroServer(config: LoadedViteWpConfig): Promise<Mana
       }).unref();
     },
   };
+}
+
+function isVerbose() {
+  return process.env.VITEWP_VERBOSE === '1';
 }
 
 async function killStaleAstroProcesses(config: LoadedViteWpConfig) {

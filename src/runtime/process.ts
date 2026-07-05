@@ -7,15 +7,25 @@ export interface ManagedProcess {
   critical?: boolean;
 }
 
-export function spawnManaged(name: string, command: string, args: string[], cwd: string): ManagedProcess {
+export interface SpawnManagedOptions {
+  shouldLogLine?: (line: string) => boolean;
+}
+
+export function spawnManaged(
+  name: string,
+  command: string,
+  args: string[],
+  cwd: string,
+  options: SpawnManagedOptions = {},
+): ManagedProcess {
   const child = spawn(command, args, {
     cwd,
     stdio: ['ignore', 'pipe', 'pipe'],
     env: process.env,
   });
 
-  child.stdout?.on('data', (chunk: Buffer) => writeLines(name, chunk));
-  child.stderr?.on('data', (chunk: Buffer) => writeLines(name, chunk));
+  child.stdout?.on('data', (chunk: Buffer) => writeLines(name, chunk, options));
+  child.stderr?.on('data', (chunk: Buffer) => writeLines(name, chunk, options));
 
   return {
     name,
@@ -55,10 +65,10 @@ export function waitForExit(processes: ManagedProcess[]): Promise<void> {
   });
 }
 
-function writeLines(name: string, chunk: Buffer) {
+function writeLines(name: string, chunk: Buffer, options: SpawnManagedOptions) {
   const lines = chunk.toString().split(/\r?\n/);
   for (const line of lines) {
-    if (line.length > 0) {
+    if (line.length > 0 && (options.shouldLogLine?.(line) ?? true)) {
       console.log(`[${name}] ${line}`);
     }
   }

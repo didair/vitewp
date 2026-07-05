@@ -13,7 +13,14 @@ export function startPhpServer(config: LoadedViteWpConfig): ManagedProcess {
     'php',
     ['-S', `${config.dev.phpHost}:${config.dev.phpPort}`, '-t', docroot, router],
     config.root,
+    {
+      shouldLogLine: (line) => isVerbose() || !line.includes('Development Server (http://'),
+    },
   );
+}
+
+function isVerbose() {
+  return process.env.VITEWP_VERBOSE === '1';
 }
 
 function writePhpRouter(config: LoadedViteWpConfig, docroot: string, contentDir: string) {

@@ -26,10 +26,4 @@ export default defineConfig({
   types: {
     output: 'src/wordpress/generated-types.ts',
   },
-  dev: {
-    phpHost: process.env.VITEWP_PHP_HOST ?? '127.0.0.1',
-    phpPort: Number(process.env.VITEWP_PHP_PORT ?? 8080),
-    astroHost: process.env.VITEWP_ASTRO_HOST ?? '127.0.0.1',
-    astroPort: Number(process.env.VITEWP_ASTRO_PORT ?? 4321),
-  },
 });

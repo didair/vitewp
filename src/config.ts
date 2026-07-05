@@ -133,15 +133,25 @@ export async function loadViteWpConfig(root = process.cwd()): Promise<LoadedVite
     },
     dev: {
       phpHost: userConfig.dev?.phpHost ?? env('VITEWP_PHP_HOST', '127.0.0.1'),
-      phpPort: userConfig.dev?.phpPort ?? Number(env('VITEWP_PHP_PORT', '8080')),
+      phpPort: userConfig.dev?.phpPort ?? envPort('VITEWP_PHP_PORT'),
       astroHost: userConfig.dev?.astroHost ?? env('VITEWP_ASTRO_HOST', '127.0.0.1'),
-      astroPort: userConfig.dev?.astroPort ?? Number(env('VITEWP_ASTRO_PORT', '4321')),
+      astroPort: userConfig.dev?.astroPort ?? envPort('VITEWP_ASTRO_PORT'),
     },
   };
 }
 
 function env(name: string, fallback: string): string {
   return process.env[name] ?? fallback;
+}
+
+function envPort(name: string): number {
+  const value = process.env[name];
+
+  if (!value || value === 'auto') {
+    return 0;
+  }
+
+  return Number(value);
 }
 
 function loadDotEnv(root: string) {
