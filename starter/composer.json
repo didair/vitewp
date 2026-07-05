@@ -1,0 +1,37 @@
+{
+  "name": "vitewp/project",
+  "description": "Composer-managed WordPress runtime for a ViteWP project.",
+  "type": "project",
+  "require": {
+    "php": ">=8.2",
+    "johnpbloch/wordpress": "^7.0",
+    "composer/installers": "^2.3"
+  },
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "https://wpackagist.org"
+    }
+  ],
+  "extra": {
+    "wordpress-install-dir": "wordpress/public",
+    "installer-paths": {
+      "wordpress/content/plugins/{$name}/": [
+        "type:wordpress-plugin"
+      ],
+      "wordpress/content/mu-plugins/{$name}/": [
+        "type:wordpress-muplugin"
+      ],
+      "wordpress/content/themes/{$name}/": [
+        "type:wordpress-theme"
+      ]
+    }
+  },
+  "config": {
+    "allow-plugins": {
+      "composer/installers": true,
+      "johnpbloch/wordpress-core-installer": true
+    },
+    "sort-packages": true
+  }
+}

@@ -3,6 +3,7 @@ import { runDev } from './commands/dev.js';
 import { runDoctor } from './commands/doctor.js';
 import { runSmoke } from './commands/smoke.js';
 import { runTypes } from './commands/types.js';
+import { runInit } from './commands/init.js';
 
 const command = process.argv[2] ?? 'help';
 
@@ -12,6 +13,9 @@ switch (command) {
     break;
   case 'doctor':
     await runDoctor();
+    break;
+  case 'init':
+    runInit();
     break;
   case 'types':
     await runTypes();
@@ -31,7 +35,9 @@ switch (command) {
 }
 
 function printHelp() {
-  console.log(`vitewp\n\nUsage:\n  vitewp dev       Start the local WordPress + Astro development runtime\n  vitewp doctor    Check the current project setup
+  console.log(`vitewp\n\nUsage:\n  vitewp init      Copy starter project files into the current directory
+  vitewp dev       Start the local WordPress + Astro development runtime
+  vitewp doctor    Check the current project setup
   vitewp types     Generate TypeScript types from WordPress metadata
   vitewp smoke     Verify the running ViteWP dev runtime\n`);
 }

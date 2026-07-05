@@ -1,20 +1,32 @@
 {
   "name": "vitewp",
-  "private": true,
-  "version": "0.0.0",
+  "private": false,
+  "version": "0.1.0",
   "type": "module",
   "bin": {
-    "vitewp": "./dist/cli.js"
+    "vitewp": "dist/cli.js"
   },
   "exports": {
-    ".": "./dist/index.js",
-    "./astro": "./dist/astro.js",
-    "./content": "./dist/content.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./astro": {
+      "types": "./dist/astro.d.ts",
+      "import": "./dist/astro.js"
+    },
+    "./content": {
+      "types": "./dist/content.d.ts",
+      "import": "./dist/content.js"
+    }
   },
   "scripts": {
     "dev": "tsx src/cli.ts dev",
     "doctor": "tsx src/cli.ts doctor",
-    "build": "tsc",
+    "build": "rm -rf dist && tsc",
+    "prepack": "npm run build",
+    "pack:dry": "npm pack --dry-run",
+    "publish:npm": "npm publish --access public",
     "preview": "node dist/cli.js doctor",
     "astro:dev": "astro dev",
     "astro:check": "astro check",
@@ -30,5 +42,37 @@
     "@types/node": "^24.10.2",
     "tsx": "^4.21.0",
     "typescript": "~6.0.2"
+  },
+  "description": "Astro-first WordPress development framework with a Composer-managed local WordPress runtime.",
+  "license": "MIT",
+  "author": "Didair",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/didair/vitewp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/didair/vitewp/issues"
+  },
+  "homepage": "https://github.com/didair/vitewp#readme",
+  "keywords": [
+    "wordpress",
+    "astro",
+    "vite",
+    "headless",
+    "php",
+    "composer"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist",
+    "starter",
+    "README.md",
+    "LICENSE"
+  ],
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
   }
 }
