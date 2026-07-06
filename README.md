@@ -99,3 +99,30 @@ const menu = await getLiveEntry('menus', { location: 'primary' });
 ```
 
 After `npm run dev` or `npm run check`, collection names and filters should have TypeScript completion.
+
+## WordPress hooks in Astro
+
+Astro templates can ask the internal WordPress runtime to render real WordPress actions and filters during SSR:
+
+```astro
+---
+import { createHooks } from 'vite-wp/wordpress/hooks';
+
+const hooks = createHooks(Astro.props);
+const head = await hooks.action('wp_head');
+const content = await hooks.filter('the_content', Astro.props.content);
+---
+
+<Fragment set:html={head.rendered} />
+<article set:html={content.value} />
+```
+
+## Blocks and plugin assets
+
+ViteWP discovers block metadata from `src/blocks/**/block.json` and bundles WordPress-side TypeScript/CSS.
+
+```txt
+src/blocks/hero/block.json
+src/blocks/hero/edit.tsx
+src/blocks/hero/style.css
+```

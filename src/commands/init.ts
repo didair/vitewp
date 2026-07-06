@@ -122,6 +122,7 @@ dist-ssr/
 wordpress/public/
 wordpress/content/mu-plugins/vitewp-bridge.php
 wordpress/content/themes/vitewp/
+wordpress/content/vitewp-assets/
 wordpress/content/uploads/
 wordpress/content/debug.log
 

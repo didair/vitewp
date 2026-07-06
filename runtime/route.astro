@@ -34,7 +34,10 @@ const showDebug = import.meta.env.DEV;
 let context = null;
 
 if (route) {
-  context = createTemplateContext(route);
+  context = createTemplateContext(route, {
+    path: routePath,
+    url: Astro.url.toString(),
+  });
   candidates = templateCandidates(route);
 
   for (const candidate of candidates) {

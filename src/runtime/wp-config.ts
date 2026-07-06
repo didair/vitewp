@@ -55,6 +55,9 @@ define('WP_HOME', ${phpString(publicUrl)});
 define('WP_SITEURL', ${phpString(publicUrl)});
 define('WP_CONTENT_DIR', ${phpString(contentDir)});
 define('WP_CONTENT_URL', WP_HOME . '/wp-content');
+define('VITEWP_ROOT', ${phpString(config.root)});
+define('VITEWP_INTERNAL_SECRET', ${phpString(process.env.VITEWP_INTERNAL_SECRET ?? '')});
+define('VITEWP_ASSETS_MANIFEST', ${phpString(join(config.root, config.blocks.outDir, 'vitewp-manifest.json'))});
 
 if (! defined('ABSPATH')) {
     define('ABSPATH', __DIR__ . '/');

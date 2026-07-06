@@ -1,5 +1,6 @@
 import { loadViteWpConfig } from '../config.js';
 import { ensureComposerInstall } from '../runtime/composer.js';
+import { randomBytes } from 'node:crypto';
 import { startAstroServer, stopAstroServer } from '../runtime/astro.js';
 import { startPhpServer } from '../runtime/php.js';
 import { waitForExit } from '../runtime/process.js';
@@ -7,6 +8,7 @@ import { assertPortAvailable, resolveInternalPort } from '../runtime/ports.js';
 import { startUnifiedProxy } from '../runtime/proxy.js';
 import { phpServerUrl, writeWordPressConfig } from '../runtime/wp-config.js';
 import { runDoctorChecks } from './doctor.js';
+import { startWordPressAssetWatcher } from '../runtime/wp-assets.js';
 
 export async function runDev() {
   const config = await loadViteWpConfig();
@@ -24,6 +26,9 @@ export async function runDev() {
   console.log('');
 
   try {
+    process.env.VITEWP_INTERNAL_SECRET ??= randomBytes(32).toString('hex');
+    process.env.VITEWP_HOOKS_CACHE ??= config.wordpress.hooks.cache.enabled ? '1' : '0';
+    process.env.VITEWP_HOOKS_CACHE_TTL ??= String(config.wordpress.hooks.cache.ttl);
     await ensureComposerInstall(config);
     writeWordPressConfig(config);
     const result = await runDoctorChecks(config, { live: false });
@@ -55,6 +60,16 @@ export async function runDev() {
     console.log(`✓ Astro internal server: http://${config.dev.astroHost}:${config.dev.astroPort}`);
   }
 
+  const assets = await startWordPressAssetWatcher(config).catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+    return undefined;
+  });
+
+  if (process.exitCode) {
+    return;
+  }
+
   const php = startPhpServer(config);
   const astro = await startAstroServer(config);
   const proxy = await startUnifiedProxy(config);
@@ -64,6 +79,7 @@ export async function runDev() {
   console.log('');
 
   await waitForExit([php, astro]);
+  await assets?.stop();
   await proxy.stop();
 }
 

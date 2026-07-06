@@ -29,6 +29,20 @@ function vitewp_bridge_force_theme(): string
     return VITEWP_THEME;
 }
 
+add_action('init', function () {
+    if (! isset($_GET['vitewp_internal_hook'])) {
+        return;
+    }
+
+    vitewp_bridge_handle_internal_hook();
+}, 0);
+
+add_action('init', 'vitewp_bridge_register_bundled_blocks', 20);
+add_action('enqueue_block_assets', 'vitewp_bridge_enqueue_block_assets');
+add_action('enqueue_block_editor_assets', 'vitewp_bridge_enqueue_block_assets');
+add_action('wp_enqueue_scripts', 'vitewp_bridge_enqueue_plugin_assets');
+add_action('admin_enqueue_scripts', 'vitewp_bridge_enqueue_plugin_assets');
+
 add_action('rest_api_init', function () {
     register_rest_route('vitewp/v1', '/routing', [
         'methods' => WP_REST_Server::READABLE,
@@ -104,6 +118,189 @@ add_action('rest_api_init', function () {
         },
     ]);
 });
+
+function vitewp_bridge_handle_internal_hook(): void
+{
+    $configured_secret = defined('VITEWP_INTERNAL_SECRET') ? (string) VITEWP_INTERNAL_SECRET : '';
+    $request_secret = (string) ($_SERVER['HTTP_X_VITEWP_INTERNAL_SECRET'] ?? '');
+
+    if ($configured_secret === '' || ! hash_equals($configured_secret, $request_secret)) {
+        status_header(403);
+        header('Content-Type: application/json; charset=utf-8');
+        echo wp_json_encode(['message' => 'Forbidden']);
+        exit;
+    }
+
+    $payload = json_decode((string) file_get_contents('php://input'), true);
+
+    if (! is_array($payload)) {
+        status_header(400);
+        header('Content-Type: application/json; charset=utf-8');
+        echo wp_json_encode(['message' => 'Invalid JSON payload']);
+        exit;
+    }
+
+    $type = (string) ($payload['type'] ?? '');
+    $hook = (string) ($payload['hook'] ?? '');
+    $args = is_array($payload['args'] ?? null) ? array_values($payload['args']) : [];
+    $context = is_array($payload['context'] ?? null) ? $payload['context'] : [];
+
+    if ($hook === '' || ! in_array($type, ['action', 'filter'], true)) {
+        status_header(400);
+        header('Content-Type: application/json; charset=utf-8');
+        echo wp_json_encode(['message' => 'Missing hook or invalid hook type']);
+        exit;
+    }
+
+    vitewp_bridge_setup_hook_context($context);
+
+    if ($type === 'action') {
+        ob_start();
+        do_action_ref_array($hook, $args);
+        $rendered = (string) ob_get_clean();
+
+        vitewp_bridge_json([
+            'type' => 'action',
+            'hook' => $hook,
+            'rendered' => $rendered,
+        ]);
+    }
+
+    $value = $payload['value'] ?? '';
+    $filter_args = array_merge([$value], $args);
+    $filtered = apply_filters_ref_array($hook, $filter_args);
+
+    vitewp_bridge_json([
+        'type' => 'filter',
+        'hook' => $hook,
+        'value' => $filtered,
+        'rendered' => is_scalar($filtered) ? (string) $filtered : wp_json_encode($filtered),
+    ]);
+}
+
+function vitewp_bridge_setup_hook_context(array $context): void
+{
+    $route = is_array($context['route'] ?? null) ? $context['route'] : [];
+    $item = is_array($route['item'] ?? null) ? $route['item'] : [];
+    $post_id = (int) ($item['id'] ?? 0);
+
+    if ($post_id <= 0) {
+        return;
+    }
+
+    $context_post = get_post($post_id);
+
+    if (! $context_post) {
+        return;
+    }
+
+    global $post;
+    $post = $context_post;
+    $GLOBALS['post'] = $context_post;
+    setup_postdata($context_post);
+
+    if (function_exists('wc_get_product') && $context_post->post_type === 'product') {
+        $GLOBALS['product'] = wc_get_product($context_post);
+    }
+}
+
+function vitewp_bridge_json(array $payload): void
+{
+    header('Content-Type: application/json; charset=utf-8');
+    echo wp_json_encode($payload);
+    exit;
+}
+
+function vitewp_bridge_register_bundled_blocks(): void
+{
+    $manifest = vitewp_bridge_assets_manifest();
+
+    foreach (($manifest['blocks'] ?? []) as $block) {
+        $directory = vitewp_bridge_project_path((string) ($block['directory'] ?? ''));
+
+        if ($directory && file_exists($directory . '/block.json')) {
+            register_block_type($directory);
+        }
+    }
+}
+
+function vitewp_bridge_enqueue_plugin_assets(): void
+{
+    $manifest = vitewp_bridge_assets_manifest();
+
+    foreach (($manifest['plugins'] ?? []) as $entry) {
+        vitewp_bridge_enqueue_asset_entry($entry);
+    }
+}
+
+function vitewp_bridge_enqueue_block_assets(): void
+{
+    $manifest = vitewp_bridge_assets_manifest();
+
+    foreach (($manifest['blocks'] ?? []) as $block) {
+        foreach (($block['entries'] ?? []) as $entry) {
+            vitewp_bridge_enqueue_asset_entry($entry);
+        }
+    }
+}
+
+function vitewp_bridge_assets_manifest(): array
+{
+    static $manifest = null;
+
+    if (is_array($manifest)) {
+        return $manifest;
+    }
+
+    $file = defined('VITEWP_ASSETS_MANIFEST') ? (string) VITEWP_ASSETS_MANIFEST : '';
+
+    if ($file === '' || ! file_exists($file)) {
+        $manifest = [];
+        return $manifest;
+    }
+
+    $decoded = json_decode((string) file_get_contents($file), true);
+    $manifest = is_array($decoded) ? $decoded : [];
+    return $manifest;
+}
+
+function vitewp_bridge_enqueue_asset_entry(array $entry): void
+{
+    $file = (string) ($entry['file'] ?? '');
+    $handle = (string) ($entry['handle'] ?? '');
+
+    if ($file === '' || $handle === '') {
+        return;
+    }
+
+    $dependencies = is_array($entry['dependencies'] ?? null) ? array_values($entry['dependencies']) : [];
+    $url = vitewp_bridge_asset_url($file);
+
+    if (($entry['kind'] ?? '') === 'style') {
+        wp_enqueue_style($handle, $url, $dependencies, null);
+        return;
+    }
+
+    wp_enqueue_script($handle, $url, $dependencies, null, true);
+
+    foreach (($entry['css'] ?? []) as $index => $css) {
+        wp_enqueue_style($handle . '-css-' . $index, vitewp_bridge_asset_url((string) $css), [], null);
+    }
+}
+
+function vitewp_bridge_asset_url(string $file): string
+{
+    return content_url('/vitewp-assets/' . ltrim($file, '/'));
+}
+
+function vitewp_bridge_project_path(string $relative_path): ?string
+{
+    if ($relative_path === '' || ! defined('VITEWP_ROOT')) {
+        return null;
+    }
+
+    return rtrim((string) VITEWP_ROOT, '/\\') . DIRECTORY_SEPARATOR . ltrim($relative_path, '/\\');
+}
 
 function vitewp_bridge_post_types(): array
 {

@@ -40,6 +40,10 @@ export async function runSmoke() {
       run: () => expectJson(`${baseUrl}/wp-json/vitewp/v1/types`, ['postTypes', 'taxonomies']),
     },
     {
+      label: 'Internal hook endpoint is not public',
+      run: () => expectHttp(`${baseUrl}/index.php?vitewp_internal_hook=1`, [403], 'application/json'),
+    },
+    {
       label: 'Vite HMR websocket',
       run: () => expectWebSocket(baseUrl),
     },

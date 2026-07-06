@@ -26,4 +26,10 @@ export default defineConfig({
   types: {
     output: 'src/wordpress/generated-types.ts',
   },
+  blocks: {
+    entries: ['src/blocks/**/block.json'],
+  },
+  plugins: {
+    entries: [],
+  },
 });

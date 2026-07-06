@@ -82,6 +82,7 @@ function sourceAliases() {
     alias('vite-wp/wordpress/templates', './wordpress/templates.ts'),
     alias('vite-wp/wordpress/client', './wordpress/client.ts'),
     alias('vite-wp/wordpress/menus', './wordpress/menus.ts'),
+    alias('vite-wp/wordpress/hooks', './wordpress/hooks.ts'),
     alias('vite-wp/wordpress/schemas', './wordpress/schemas.ts'),
     alias('vite-wp/wordpress', './wordpress/index.ts'),
     alias('vite-wp/content', './content.ts'),

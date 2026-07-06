@@ -2,6 +2,9 @@ import type { WpContentItem, WpResolvedRoute } from './client.js';
 
 export interface TemplateContext {
   route: WpResolvedRoute;
+  url: string;
+  path: string;
+  cacheKey: string;
   title: string;
   content: string;
   excerpt: string;
@@ -17,13 +20,25 @@ export interface TemplateContext {
   termName?: string;
 }
 
-export function createTemplateContext(route: WpResolvedRoute): TemplateContext {
+export interface TemplateContextOptions {
+  url?: string;
+  path?: string;
+}
+
+export function createTemplateContext(route: WpResolvedRoute, options: TemplateContextOptions = {}): TemplateContext {
+  const base = {
+    route,
+    url: options.url ?? '',
+    path: options.path ?? '',
+    cacheKey: createCacheKey(route, options),
+  };
+
   switch (route.kind) {
     case 'postsArchive':
     case 'postTypeArchive':
     case 'search':
       return {
-        route,
+        ...base,
         title: route.title,
         content: '',
         excerpt: '',
@@ -38,7 +53,7 @@ export function createTemplateContext(route: WpResolvedRoute): TemplateContext {
       };
     case 'taxonomyArchive':
       return {
-        route,
+        ...base,
         title: route.title,
         content: '',
         excerpt: '',
@@ -55,7 +70,7 @@ export function createTemplateContext(route: WpResolvedRoute): TemplateContext {
     case 'page':
     case 'single':
       return {
-        route,
+        ...base,
         title: route.item.title.rendered,
         content: route.item.content.rendered,
         excerpt: route.item.excerpt?.rendered ?? '',
@@ -68,6 +83,19 @@ export function createTemplateContext(route: WpResolvedRoute): TemplateContext {
         totalPages: 0,
       };
   }
+}
+
+function createCacheKey(route: WpResolvedRoute, options: TemplateContextOptions) {
+  return [
+    route.kind,
+    'postType' in route ? route.postType : '',
+    route.slug,
+    'item' in route ? route.item.id : '',
+    'taxonomy' in route ? route.taxonomy : '',
+    'termId' in route ? route.termId : '',
+    'page' in route ? route.page : '',
+    options.path ?? '',
+  ].join(':');
 }
 
 export function templateCandidates(route: WpResolvedRoute): string[] {

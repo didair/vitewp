@@ -40,6 +40,7 @@ export async function runDoctorChecks(config: LoadedViteWpConfig, options: { liv
   checks.push(fileCheck(config.root, `${config.wordpress.docroot}/wp-config.php`, 'Generated wp-config.php'));
   checks.push(fileCheck(config.root, `${config.wordpress.contentDir}/mu-plugins/vitewp-bridge.php`, 'ViteWP bridge mu-plugin'));
   checks.push(fileCheck(config.root, `${config.wordpress.contentDir}/themes/vitewp/style.css`, 'ViteWP placeholder theme'));
+  checks.push(wordPressAssetsCheck(config));
   checks.push(templateDirectoryCheck(config));
   checks.push(databaseConfigCheck(config));
 
@@ -49,6 +50,7 @@ export async function runDoctorChecks(config: LoadedViteWpConfig, options: { liv
   checks.push(gitignoreCheck(config.root, config.wordpress.docroot));
   checks.push(runtimeFilesIgnoredCheck(config.root, config.wordpress.contentDir));
   checks.push(...requiredPluginFileChecks(config));
+  checks.push(...pluginPresetChecks(config));
   if (live) {
     checks.push(await wordpressHealthCheck(config));
   }
@@ -276,6 +278,7 @@ function runtimeFilesIgnoredCheck(root: string, contentDir: string): Check {
 
   const gitignore = readFileSync(gitignorePath, 'utf8');
   const required = [
+    `${contentDir}/vitewp-assets/`,
     `${contentDir}/uploads/`,
     `${contentDir}/debug.log`,
   ];
@@ -295,6 +298,35 @@ function requiredPluginFileChecks(config: LoadedViteWpConfig): Check[] {
     const directory = `${config.wordpress.contentDir}/plugins/${plugin}`;
     return fileCheck(config.root, directory, `Required plugin files: ${plugin}`);
   });
+}
+
+function pluginPresetChecks(config: LoadedViteWpConfig): Check[] {
+  return config.wordpress.pluginPresets.map((preset) => {
+    const slug = pluginSlugForPreset(preset);
+    return fileCheck(config.root, `${config.wordpress.contentDir}/plugins/${slug}`, `Plugin preset files: ${preset}`);
+  });
+}
+
+function wordPressAssetsCheck(config: LoadedViteWpConfig): Check {
+  const manifest = join(config.root, config.blocks.outDir, 'vitewp-manifest.json');
+  const hasBlockSource = existsSync(join(config.root, 'src/blocks'));
+  const hasPluginEntries = config.plugins.entries.length > 0;
+
+  if (!hasBlockSource && !hasPluginEntries) {
+    return {
+      status: 'pass',
+      label: 'WordPress asset manifest',
+      detail: 'No block/plugin entries configured.',
+    };
+  }
+
+  return existsSync(manifest)
+    ? { status: 'pass', label: 'WordPress asset manifest', detail: relativePath(config.root, manifest) }
+    : {
+        status: 'warn',
+        label: 'WordPress asset manifest',
+        detail: `Run vite-wp dev to generate ${relativePath(config.root, manifest)}.`,
+      };
 }
 
 async function wordpressHealthCheck(config: LoadedViteWpConfig): Promise<Check> {
@@ -320,7 +352,11 @@ async function wordpressHealthCheck(config: LoadedViteWpConfig): Promise<Check> 
       activeTheme?: string;
       activePlugins?: string[];
     };
-    const missingPlugins = config.wordpress.requiredPlugins.filter((plugin) => {
+    const expectedPlugins = [
+      ...config.wordpress.requiredPlugins,
+      ...config.wordpress.pluginPresets.map(pluginSlugForPreset),
+    ];
+    const missingPlugins = expectedPlugins.filter((plugin) => {
       return !health.activePlugins?.some((active) => active === plugin || active.startsWith(`${plugin}/`));
     });
 
@@ -346,6 +382,19 @@ async function wordpressHealthCheck(config: LoadedViteWpConfig): Promise<Check> 
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function pluginSlugForPreset(preset: string) {
+  const presets: Record<string, string> = {
+    yoast: 'wordpress-seo',
+    woocommerce: 'woocommerce',
+  };
+
+  return presets[preset] ?? preset;
+}
+
+function relativePath(root: string, file: string) {
+  return file.startsWith(root) ? file.slice(root.length + 1) : file;
 }
 
 function printChecks(checks: Check[]) {

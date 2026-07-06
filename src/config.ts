@@ -3,6 +3,10 @@ import { resolve } from 'node:path';
 import { loadConfigFromFile, loadEnv } from 'vite';
 
 export type WordPressRuntimeMode = 'local' | 'external';
+type HookCacheConfig = boolean | {
+  enabled?: boolean;
+  ttl?: number;
+};
 
 export interface ViteWpConfig {
   database?: {
@@ -20,6 +24,10 @@ export interface ViteWpConfig {
     docroot?: string;
     contentDir?: string;
     requiredPlugins?: string[];
+    pluginPresets?: string[];
+    hooks?: {
+      cache?: HookCacheConfig;
+    };
   };
   composer?: {
     install?: boolean;
@@ -36,6 +44,13 @@ export interface ViteWpConfig {
     phpPort?: number;
     astroHost?: string;
     astroPort?: number;
+  };
+  blocks?: {
+    entries?: string[];
+    outDir?: string;
+  };
+  plugins?: {
+    entries?: string[];
   };
 }
 
@@ -57,6 +72,13 @@ export interface LoadedViteWpConfig {
     docroot: string;
     contentDir: string;
     requiredPlugins: string[];
+    pluginPresets: string[];
+    hooks: {
+      cache: {
+        enabled: boolean;
+        ttl: number;
+      };
+    };
   };
   composer: {
     install: boolean;
@@ -73,6 +95,13 @@ export interface LoadedViteWpConfig {
     phpPort: number;
     astroHost: string;
     astroPort: number;
+  };
+  blocks: {
+    entries: string[];
+    outDir: string;
+  };
+  plugins: {
+    entries: string[];
   };
 }
 
@@ -126,6 +155,10 @@ export async function loadViteWpConfig(root = process.cwd()): Promise<LoadedVite
       docroot: userConfig.wordpress?.docroot ?? 'wordpress/public',
       contentDir: userConfig.wordpress?.contentDir ?? 'wordpress/content',
       requiredPlugins: userConfig.wordpress?.requiredPlugins ?? [],
+      pluginPresets: userConfig.wordpress?.pluginPresets ?? [],
+      hooks: {
+        cache: normalizeHookCache(userConfig.wordpress?.hooks?.cache),
+      },
     },
     composer: {
       install: userConfig.composer?.install ?? true,
@@ -142,6 +175,13 @@ export async function loadViteWpConfig(root = process.cwd()): Promise<LoadedVite
       phpPort: userConfig.dev?.phpPort ?? envPort('VITEWP_PHP_PORT'),
       astroHost: userConfig.dev?.astroHost ?? env('VITEWP_ASTRO_HOST', '127.0.0.1'),
       astroPort: userConfig.dev?.astroPort ?? envPort('VITEWP_ASTRO_PORT'),
+    },
+    blocks: {
+      entries: userConfig.blocks?.entries ?? ['src/blocks/**/block.json'],
+      outDir: userConfig.blocks?.outDir ?? 'wordpress/content/vitewp-assets',
+    },
+    plugins: {
+      entries: userConfig.plugins?.entries ?? [],
     },
   };
 }
@@ -166,4 +206,19 @@ function loadDotEnv(root: string) {
   for (const [key, value] of Object.entries(values)) {
     process.env[key] ??= value;
   }
+}
+
+function normalizeHookCache(cache: HookCacheConfig | undefined) {
+  if (cache === false) {
+    return { enabled: false, ttl: 0 };
+  }
+
+  if (cache === true || cache === undefined) {
+    return { enabled: true, ttl: 300 };
+  }
+
+  return {
+    enabled: cache.enabled ?? true,
+    ttl: cache.ttl ?? 300,
+  };
 }
