@@ -2,22 +2,14 @@
 
 ViteWP is an Astro-first WordPress development framework.
 
-A ViteWP project **is** the local WordPress site: Composer installs WordPress, PHP runs WordPress, Astro renders the frontend, and one local URL serves admin, REST, media, previews, and Astro pages.
-
-```txt
-http://localhost:3000
-```
-
-PHP and Astro still run internally, but you normally only use the unified ViteWP URL.
+One entrypoint for everything you need, no fuzz and no magic.
 
 ## Requirements
 
 - Node.js 20+
 - PHP 8.2+
 - Composer
-- MySQL or MariaDB
-
-ViteWP is bring-your-own database. It does not start MySQL for you.
+- a MySQL or MariaDB server
 
 ## Get started
 
@@ -27,12 +19,11 @@ cd my-site
 npm init -y
 npx vite-wp init
 cp .env.example .env
-npm run dev
 ```
 
 `vite-wp init` creates the starter files, adds the needed package dependencies, and runs install.
 
-Edit `.env` with your database credentials, then open:
+Edit `.env` with your database credentials, run `npm run dev`, wait for the initial configuration and then open:
 
 ```txt
 http://localhost:3000
@@ -79,7 +70,7 @@ my-site/
 
 ## Templates
 
-ViteWP ships default templates from the package. Create files in `src/templates` only when you want to override them. Project templates always win over package defaults.
+ViteWP ships default templates from the package. Create files in `src/templates` only when you want to override them.
 
 Examples:
 
@@ -106,10 +97,3 @@ const menu = await getLiveEntry('menus', { location: 'primary' });
 ```
 
 After `npm run dev` or `npm run check`, collection names and filters should have TypeScript completion.
-
-## Notes
-
-- WordPress core is installed into `wordpress/public` by Composer.
-- Do not commit `wordpress/public`, `.env`, `.vitewp`, or uploads.
-- The tiny placeholder theme exists only to keep WordPress admin happy.
-- Docker is optional, not required.
