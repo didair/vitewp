@@ -14,13 +14,24 @@ export function startPhpServer(config: LoadedViteWpConfig): ManagedProcess {
     ['-S', `${config.dev.phpHost}:${config.dev.phpPort}`, '-t', docroot, router],
     config.root,
     {
-      shouldLogLine: (line) => isVerbose() || !line.includes('Development Server (http://'),
+      shouldLogLine: shouldLogPhpLine,
     },
   );
 }
 
 function isVerbose() {
   return process.env.VITEWP_VERBOSE === '1';
+}
+
+function shouldLogPhpLine(line: string) {
+  if (isVerbose()) return true;
+
+  if (line.includes('Development Server (http://')) return false;
+  if (/\sAccepted$/.test(line)) return false;
+  if (/\sClosing$/.test(line)) return false;
+  if (/\[(?:2\d\d|3\d\d)\]:\s/.test(line)) return false;
+
+  return true;
 }
 
 function writePhpRouter(config: LoadedViteWpConfig, docroot: string, contentDir: string) {
