@@ -10,8 +10,13 @@ export async function ensureComposerInstall(config: LoadedViteWpConfig) {
   }
 
   const lockfile = join(config.root, 'composer.lock');
+  const manifest = join(config.root, 'composer.json');
   const vendor = join(config.root, 'vendor');
   const wpSettings = join(config.root, config.wordpress.docroot, 'wp-settings.php');
+
+  if (!existsSync(manifest)) {
+    throw new Error('composer.json is missing. Run `vite-wp init` or add a Composer manifest before starting dev.');
+  }
 
   if (existsSync(lockfile) && existsSync(vendor) && existsSync(wpSettings)) {
     console.log('✓ Composer dependencies already installed');
@@ -19,13 +24,13 @@ export async function ensureComposerInstall(config: LoadedViteWpConfig) {
   }
 
   console.log('Installing Composer dependencies...');
-  await runComposerInstall(config.root);
+  await runComposer(config.root, ['install']);
   console.log('✓ Composer dependencies ready');
 }
 
-function runComposerInstall(cwd: string): Promise<void> {
+export function runComposer(cwd: string, args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn('composer', ['install'], {
+    const child = spawn('composer', args, {
       cwd,
       stdio: 'inherit',
       env: { ...process.env, COMPOSER_ALLOW_SUPERUSER: process.env.COMPOSER_ALLOW_SUPERUSER ?? '1' },
@@ -35,8 +40,12 @@ function runComposerInstall(cwd: string): Promise<void> {
       if (code === 0) {
         resolve();
       } else {
-        reject(new Error(`composer install failed with code ${code ?? 'unknown'}.`));
+        reject(new Error(`composer ${args.join(' ')} failed with code ${code ?? 'unknown'}.`));
       }
+    });
+
+    child.once('error', (error) => {
+      reject(new Error(`Could not run composer. Is Composer installed?\n${error.message}`));
     });
   });
 }

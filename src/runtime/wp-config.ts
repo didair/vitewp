@@ -96,13 +96,20 @@ function ensureContentSymlink(docroot: string, contentDir: string) {
 }
 
 function ensureDefaultContentFiles(contentDir: string) {
-  const packageContentDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../starter/wordpress/content');
+  const packageContentDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../defaults/wordpress/content');
 
-  copyIfMissing(
+  copyPackageFile(
     join(packageContentDir, 'mu-plugins/vitewp-bridge.php'),
     join(contentDir, 'mu-plugins/vitewp-bridge.php'),
   );
   copyIfMissing(join(packageContentDir, 'themes/vitewp'), join(contentDir, 'themes/vitewp'));
+}
+
+function copyPackageFile(source: string, destination: string) {
+  if (!existsSync(source)) return;
+
+  mkdirSync(dirname(destination), { recursive: true });
+  cpSync(source, destination);
 }
 
 function copyIfMissing(source: string, destination: string) {

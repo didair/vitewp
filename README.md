@@ -38,6 +38,8 @@ npm run dev      # Start the local ViteWP runtime
 npm run doctor   # Check PHP, Composer, WordPress, config, and environment
 npm run types    # Generate WordPress-derived TypeScript types
 npm run check    # Run Astro type checking
+npx vite-wp composer install  # Run Composer in the project
+npx vite-wp wp plugin list    # Run WP-CLI when installed
 ```
 
 For internal runtime diagnostics:
@@ -62,8 +64,8 @@ my-site/
   wordpress/
     public/              # Composer-installed WordPress core
     content/
-      mu-plugins/
-      themes/
+      mu-plugins/        # ViteWP bridge is generated here
+      themes/            # ViteWP placeholder theme is generated here
       plugins/
       uploads/
 ```

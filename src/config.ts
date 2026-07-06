@@ -19,6 +19,7 @@ export interface ViteWpConfig {
     url?: string;
     docroot?: string;
     contentDir?: string;
+    requiredPlugins?: string[];
   };
   composer?: {
     install?: boolean;
@@ -55,6 +56,7 @@ export interface LoadedViteWpConfig {
     url: string;
     docroot: string;
     contentDir: string;
+    requiredPlugins: string[];
   };
   composer: {
     install: boolean;
@@ -123,6 +125,7 @@ export async function loadViteWpConfig(root = process.cwd()): Promise<LoadedVite
       url: userConfig.wordpress?.url ?? 'http://localhost:3000',
       docroot: userConfig.wordpress?.docroot ?? 'wordpress/public',
       contentDir: userConfig.wordpress?.contentDir ?? 'wordpress/content',
+      requiredPlugins: userConfig.wordpress?.requiredPlugins ?? [],
     },
     composer: {
       install: userConfig.composer?.install ?? true,

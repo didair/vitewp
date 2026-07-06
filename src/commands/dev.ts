@@ -23,18 +23,18 @@ export async function runDev() {
   console.log(`- database: ${config.database.driver}://${config.database.user}@${config.database.host}:${config.database.port}/${config.database.name}`);
   console.log('');
 
-  const result = await runDoctorChecks(config);
-
-  if (result.errors > 0) {
-    console.log('');
-    console.log('Fix the errors above before starting the dev runtime.');
-    process.exitCode = 1;
-    return;
-  }
-
   try {
     await ensureComposerInstall(config);
     writeWordPressConfig(config);
+    const result = await runDoctorChecks(config, { live: false });
+
+    if (result.errors > 0) {
+      console.log('');
+      console.log('Fix the errors above before starting the dev runtime.');
+      process.exitCode = 1;
+      return;
+    }
+
     await stopAstroServer(config);
     config.dev.phpPort = await resolveInternalPort(config.dev.phpHost, config.dev.phpPort);
     config.dev.astroPort = await resolveInternalPort(config.dev.astroHost, config.dev.astroPort);

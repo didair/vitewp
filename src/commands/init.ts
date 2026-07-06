@@ -81,6 +81,8 @@ function updatePackageJson(root: string, packageRoot: string) {
   packageJson.scripts.dev ??= 'vite-wp dev';
   packageJson.scripts.doctor ??= 'vite-wp doctor';
   packageJson.scripts.types ??= 'vite-wp types';
+  packageJson.scripts.composer ??= 'vite-wp composer';
+  packageJson.scripts.wp ??= 'vite-wp wp';
   packageJson.scripts.check ??= 'astro check';
   packageJson.dependencies['vite-wp'] ??= `^${viteWp.version}`;
   packageJson.dependencies.astro ??= '^7.0.6';
@@ -118,6 +120,8 @@ dist-ssr/
 .vitewp/
 .astro/
 wordpress/public/
+wordpress/content/mu-plugins/vitewp-bridge.php
+wordpress/content/themes/vitewp/
 wordpress/content/uploads/
 wordpress/content/debug.log
 

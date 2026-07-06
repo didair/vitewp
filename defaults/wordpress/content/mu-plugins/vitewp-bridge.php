@@ -47,6 +47,24 @@ add_action('rest_api_init', function () {
         },
     ]);
 
+    register_rest_route('vitewp/v1', '/health', [
+        'methods' => WP_REST_Server::READABLE,
+        'permission_callback' => '__return_true',
+        'callback' => function () {
+            return [
+                'wordpressVersion' => get_bloginfo('version'),
+                'phpVersion' => PHP_VERSION,
+                'homeUrl' => home_url('/'),
+                'siteUrl' => site_url('/'),
+                'permalinkStructure' => (string) get_option('permalink_structure'),
+                'activeTheme' => get_stylesheet(),
+                'template' => get_template(),
+                'activePlugins' => array_values((array) get_option('active_plugins', [])),
+                'muPlugins' => array_values(array_keys(get_mu_plugins())),
+            ];
+        },
+    ]);
+
     register_rest_route('vitewp/v1', '/types', [
         'methods' => WP_REST_Server::READABLE,
         'permission_callback' => '__return_true',

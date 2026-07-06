@@ -20,7 +20,8 @@ export async function runDoctor() {
   process.exitCode = result.errors > 0 ? 1 : 0;
 }
 
-export async function runDoctorChecks(config: LoadedViteWpConfig) {
+export async function runDoctorChecks(config: LoadedViteWpConfig, options: { live?: boolean } = {}) {
+  const live = options.live ?? true;
   const checks: Check[] = [];
 
   checks.push({
@@ -32,17 +33,25 @@ export async function runDoctorChecks(config: LoadedViteWpConfig) {
   checks.push(fileCheck(config.root, 'astro.config.mjs', 'Astro config'));
   checks.push(fileCheck(config.root, 'composer.json', 'Composer manifest'));
   checks.push(composerWordPressCheck(config.root, config.composer.wordpressPackage));
+  checks.push(composerInstallDirCheck(config));
   checks.push(fileCheck(config.root, 'composer.lock', 'Composer lockfile'));
+  checks.push(composerLockCheck(config.root, config.composer.wordpressPackage));
   checks.push(fileCheck(config.root, `${config.wordpress.docroot}/wp-settings.php`, 'Composer-installed WordPress core'));
   checks.push(fileCheck(config.root, `${config.wordpress.docroot}/wp-config.php`, 'Generated wp-config.php'));
+  checks.push(fileCheck(config.root, `${config.wordpress.contentDir}/mu-plugins/vitewp-bridge.php`, 'ViteWP bridge mu-plugin'));
   checks.push(fileCheck(config.root, `${config.wordpress.contentDir}/themes/vitewp/style.css`, 'ViteWP placeholder theme'));
-  checks.push(fileCheck(config.root, config.templates.directory, 'Template directory'));
+  checks.push(templateDirectoryCheck(config));
   checks.push(databaseConfigCheck(config));
 
   checks.push(await commandCheck('php', ['-v'], 'PHP runtime'));
   checks.push(await commandCheck('composer', ['--version'], 'Composer'));
 
   checks.push(gitignoreCheck(config.root, config.wordpress.docroot));
+  checks.push(runtimeFilesIgnoredCheck(config.root, config.wordpress.contentDir));
+  checks.push(...requiredPluginFileChecks(config));
+  if (live) {
+    checks.push(await wordpressHealthCheck(config));
+  }
 
   printChecks(checks);
 
@@ -60,6 +69,18 @@ function fileCheck(root: string, relativePath: string, label: string): Check {
   return existsSync(path)
     ? { status: 'pass', label, detail: relativePath }
     : { status: 'warn', label, detail: `${relativePath} does not exist yet.` };
+}
+
+function templateDirectoryCheck(config: LoadedViteWpConfig): Check {
+  const directory = join(config.root, config.templates.directory);
+
+  return existsSync(directory)
+    ? { status: 'pass', label: 'Project template overrides', detail: config.templates.directory }
+    : {
+        status: 'pass',
+        label: 'Project template overrides',
+        detail: `${config.templates.directory} is optional; package defaults will be used.`,
+      };
 }
 
 async function commandCheck(command: string, args: string[], label: string): Promise<Check> {
@@ -147,6 +168,86 @@ function composerWordPressCheck(root: string, wordpressPackage: string): Check {
   }
 }
 
+function composerInstallDirCheck(config: LoadedViteWpConfig): Check {
+  const composerPath = join(config.root, 'composer.json');
+
+  if (!existsSync(composerPath)) {
+    return {
+      status: 'warn',
+      label: 'Composer WordPress install dir',
+      detail: 'composer.json does not exist yet.',
+    };
+  }
+
+  try {
+    const composer = JSON.parse(readFileSync(composerPath, 'utf8')) as {
+      extra?: { 'wordpress-install-dir'?: string };
+    };
+    const installDir = composer.extra?.['wordpress-install-dir'];
+
+    if (!installDir) {
+      return {
+        status: 'warn',
+        label: 'Composer WordPress install dir',
+        detail: 'extra.wordpress-install-dir is not set.',
+      };
+    }
+
+    return installDir === config.wordpress.docroot
+      ? { status: 'pass', label: 'Composer WordPress install dir', detail: installDir }
+      : {
+          status: 'fail',
+          label: 'Composer WordPress install dir',
+          detail: `${installDir} does not match config docroot ${config.wordpress.docroot}.`,
+        };
+  } catch (error) {
+    return {
+      status: 'fail',
+      label: 'Composer WordPress install dir',
+      detail: error instanceof Error ? error.message : 'Could not parse composer.json.',
+    };
+  }
+}
+
+function composerLockCheck(root: string, wordpressPackage: string): Check {
+  const lockPath = join(root, 'composer.lock');
+
+  if (!existsSync(lockPath)) {
+    return {
+      status: 'warn',
+      label: 'Locked WordPress version',
+      detail: 'Run composer install to create composer.lock.',
+    };
+  }
+
+  try {
+    const lock = JSON.parse(readFileSync(lockPath, 'utf8')) as {
+      packages?: Array<{ name?: string; version?: string }>;
+    };
+    const wordpress = lock.packages?.find((pkg) => pkg.name === wordpressPackage);
+
+    if (!wordpress?.version) {
+      return {
+        status: 'fail',
+        label: 'Locked WordPress version',
+        detail: `${wordpressPackage} was not found in composer.lock.`,
+      };
+    }
+
+    return {
+      status: 'pass',
+      label: 'Locked WordPress version',
+      detail: `${wordpressPackage}@${wordpress.version}`,
+    };
+  } catch (error) {
+    return {
+      status: 'fail',
+      label: 'Locked WordPress version',
+      detail: error instanceof Error ? error.message : 'Could not parse composer.lock.',
+    };
+  }
+}
+
 function gitignoreCheck(root: string, docroot: string): Check {
   const gitignorePath = join(root, '.gitignore');
 
@@ -164,6 +265,87 @@ function gitignoreCheck(root: string, docroot: string): Check {
         label: 'Generated WordPress ignored',
         detail: `Add ${normalizedDocroot} to .gitignore.`,
       };
+}
+
+function runtimeFilesIgnoredCheck(root: string, contentDir: string): Check {
+  const gitignorePath = join(root, '.gitignore');
+
+  if (!existsSync(gitignorePath)) {
+    return { status: 'warn', label: 'WordPress runtime files ignored', detail: '.gitignore is missing.' };
+  }
+
+  const gitignore = readFileSync(gitignorePath, 'utf8');
+  const required = [
+    `${contentDir}/uploads/`,
+    `${contentDir}/debug.log`,
+  ];
+  const missing = required.filter((entry) => !gitignore.includes(entry));
+
+  return missing.length === 0
+    ? { status: 'pass', label: 'WordPress runtime files ignored', detail: required.join(', ') }
+    : {
+        status: 'warn',
+        label: 'WordPress runtime files ignored',
+        detail: `Add ${missing.join(', ')} to .gitignore.`,
+      };
+}
+
+function requiredPluginFileChecks(config: LoadedViteWpConfig): Check[] {
+  return config.wordpress.requiredPlugins.map((plugin) => {
+    const directory = `${config.wordpress.contentDir}/plugins/${plugin}`;
+    return fileCheck(config.root, directory, `Required plugin files: ${plugin}`);
+  });
+}
+
+async function wordpressHealthCheck(config: LoadedViteWpConfig): Promise<Check> {
+  const url = `${config.wordpress.url.replace(/\/$/, '')}/wp-json/vitewp/v1/health`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+
+    if (!response.ok) {
+      return {
+        status: 'warn',
+        label: 'WordPress health endpoint',
+        detail: `${url} returned ${response.status}. Start vite-wp dev if the runtime is offline.`,
+      };
+    }
+
+    const health = await response.json() as {
+      wordpressVersion?: string;
+      phpVersion?: string;
+      permalinkStructure?: string;
+      activeTheme?: string;
+      activePlugins?: string[];
+    };
+    const missingPlugins = config.wordpress.requiredPlugins.filter((plugin) => {
+      return !health.activePlugins?.some((active) => active === plugin || active.startsWith(`${plugin}/`));
+    });
+
+    if (missingPlugins.length > 0) {
+      return {
+        status: 'fail',
+        label: 'WordPress health endpoint',
+        detail: `Missing active plugin(s): ${missingPlugins.join(', ')}.`,
+      };
+    }
+
+    return {
+      status: 'pass',
+      label: 'WordPress health endpoint',
+      detail: `WP ${health.wordpressVersion ?? '?'} / PHP ${health.phpVersion ?? '?'} / theme ${health.activeTheme ?? '?'} / permalinks ${health.permalinkStructure || 'plain'}`,
+    };
+  } catch {
+    return {
+      status: 'warn',
+      label: 'WordPress health endpoint',
+      detail: `Could not reach ${url}. Start vite-wp dev to run live health checks.`,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function printChecks(checks: Check[]) {

@@ -43,6 +43,8 @@
   "scripts": {
     "dev": "tsx src/cli.ts dev",
     "doctor": "tsx src/cli.ts doctor",
+    "composer": "tsx src/cli.ts composer",
+    "wp": "tsx src/cli.ts wp",
     "build": "rm -rf dist && tsc",
     "prepack": "npm run build",
     "pack:dry": "npm pack --dry-run",
