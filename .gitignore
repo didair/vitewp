@@ -17,6 +17,7 @@ dist-ssr
 !.env.example
 composer.json
 composer.lock
+docs/
 
 # Editor directories and files
 .vscode/*
