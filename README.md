@@ -120,10 +120,10 @@ const content = await hooks.filter('the_content', Astro.props.content);
 
 ## Blocks and plugin assets
 
-ViteWP discovers block metadata from `src/blocks/**/block.json` and bundles WordPress-side TypeScript/CSS.
+ViteWP discovers block metadata from `src/blocks/**/block.json` and bundles WordPress-side JS/TS and optional CSS.
 
 ```txt
 src/blocks/hero/block.json
 src/blocks/hero/edit.tsx
-src/blocks/hero/style.css
+src/blocks/hero/style.css # optional
 ```

@@ -1,7 +1,14 @@
 const { registerBlockType } = wp.blocks;
-const { Button } = wp.components;
-const { MediaUpload, MediaUploadCheck, RichText, useBlockProps } = wp.blockEditor;
-const { createElement: h, Fragment } = wp.element;
+const { PanelBody, TextControl } = wp.components;
+const {
+  BlockControls,
+  InspectorControls,
+  MediaPlaceholder,
+  MediaReplaceFlow,
+  RichText,
+  useBlockProps,
+} = wp.blockEditor;
+const { createElement: h } = wp.element;
 
 const attributes = {
   headline: {
@@ -41,37 +48,56 @@ registerBlockType('vitewp/hero', {
     const { headline = '', imageId, imageUrl = '', imageAlt = '' } = attributes;
     const blockProps = useBlockProps({ className: 'vitewp-hero' });
 
-    const mediaUpload = (buttonLabel, variant = 'secondary') => h(MediaUploadCheck, null,
-      h(MediaUpload, {
-        onSelect: (media) => setAttributes({
-          imageId: media.id,
-          imageUrl: media.url,
-          imageAlt: media.alt || media.title || '',
-        }),
-        allowedTypes: ['image'],
-        value: imageId,
-        render: ({ open }) => h(Button, { variant, onClick: open }, buttonLabel),
-      })
-    );
+    const selectImage = (media) => setAttributes({
+      imageId: media.id,
+      imageUrl: media.url,
+      imageAlt: media.alt || media.title || '',
+    });
 
     return h('section', blockProps,
-      h('div', { className: 'vitewp-hero__media' },
-        imageUrl
-          ? h(Fragment, null,
-              h('img', { src: imageUrl, alt: imageAlt || '' }),
-              mediaUpload('Replace image')
-            )
-          : mediaUpload('Choose hero image', 'primary')
-      ),
-      h('div', { className: 'vitewp-hero__content' },
-        h(RichText, {
-          tagName: 'h1',
-          value: headline,
-          placeholder: 'Write a hero headline…',
-          allowedFormats: [],
-          onChange: (value) => setAttributes({ headline: value }),
+      imageUrl && h(BlockControls, { group: 'other' },
+        h(MediaReplaceFlow, {
+          mediaId: imageId,
+          mediaURL: imageUrl,
+          allowedTypes: ['image'],
+          accept: 'image/*',
+          name: 'Replace image',
+          onSelect: selectImage,
         })
-      )
+      ),
+      h(InspectorControls, null,
+        h(PanelBody, { title: 'Hero image', initialOpen: true },
+          h(TextControl, {
+            label: 'Alt text',
+            value: imageAlt,
+            help: 'Used by screen readers and when the image cannot load.',
+            onChange: (value) => setAttributes({ imageAlt: value }),
+          })
+        )
+      ),
+      imageUrl
+        ? h('figure', { className: 'vitewp-hero__media' },
+            h('img', { src: imageUrl, alt: imageAlt || '' })
+          )
+        : h(MediaPlaceholder, {
+            icon: 'format-image',
+            labels: {
+              title: 'Hero image',
+              instructions: 'Choose an image from the WordPress media library.',
+            },
+            onSelect: selectImage,
+            accept: 'image/*',
+            allowedTypes: ['image'],
+            multiple: false,
+          }),
+      h(RichText, {
+        tagName: 'h1',
+        className: 'vitewp-hero__headline',
+        value: headline,
+        placeholder: 'Write a hero headline…',
+        allowedFormats: [],
+        onChange: (value) => setAttributes({ headline: value }),
+      })
     );
   },
 
@@ -80,12 +106,14 @@ registerBlockType('vitewp/hero', {
     const blockProps = wp.blockEditor.useBlockProps.save({ className: 'vitewp-hero' });
 
     return h('section', blockProps,
-      imageUrl && h('div', { className: 'vitewp-hero__media' },
+      imageUrl && h('figure', { className: 'vitewp-hero__media' },
         h('img', { src: imageUrl, alt: imageAlt || '' })
       ),
-      h('div', { className: 'vitewp-hero__content' },
-        h(RichText.Content, { tagName: 'h1', value: headline })
-      )
+      h(RichText.Content, {
+        tagName: 'h1',
+        className: 'vitewp-hero__headline',
+        value: headline,
+      })
     );
   },
 });

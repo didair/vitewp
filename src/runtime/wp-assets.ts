@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 import { build, type InlineConfig } from 'vite';
@@ -81,7 +82,21 @@ export async function startWordPressAssetWatcher(config: LoadedViteWpConfig): Pr
   writeAssetsManifest(config, outDir, discovered, builtEntries);
   console.log(`✓ WordPress assets watching (${discovered.entries.length} entr${discovered.entries.length === 1 ? 'y' : 'ies'})`);
 
-  const watchers = discovered.entries.map((entry) => watch(entry.source, () => scheduleAssetRebuild(config, outDir, discovered)));
+  let fingerprint = assetFingerprint(discovered);
+  const watchedFiles = unique([
+    ...discovered.blocks.map((block) => block.metadataFile),
+    ...discovered.entries.map((entry) => entry.source),
+  ]);
+  const watchers = watchedFiles.map((file) => watch(file, () => {
+    const nextFingerprint = assetFingerprint(discovered);
+
+    if (nextFingerprint === fingerprint) {
+      return;
+    }
+
+    fingerprint = nextFingerprint;
+    scheduleAssetRebuild(config, outDir);
+  }));
 
   return {
     stop: async () => {
@@ -93,10 +108,11 @@ export async function startWordPressAssetWatcher(config: LoadedViteWpConfig): Pr
 }
 
 let rebuildTimer: NodeJS.Timeout | undefined;
-function scheduleAssetRebuild(config: LoadedViteWpConfig, outDir: string, discovered: DiscoveredAssets) {
+function scheduleAssetRebuild(config: LoadedViteWpConfig, outDir: string) {
   clearTimeout(rebuildTimer);
   rebuildTimer = setTimeout(async () => {
     try {
+      const discovered = discoverAssets(config);
       const builtEntries = await buildAssetEntries(config, outDir, discovered.entries, 'development');
       writeAssetsManifest(config, outDir, discovered, builtEntries);
       console.log('✓ WordPress assets rebuilt');
@@ -104,6 +120,27 @@ function scheduleAssetRebuild(config: LoadedViteWpConfig, outDir: string, discov
       console.error(`WordPress asset rebuild failed: ${error instanceof Error ? error.message : error}`);
     }
   }, 100);
+}
+
+function assetFingerprint(discovered: DiscoveredAssets) {
+  const hash = createHash('sha1');
+  const files = unique([
+    ...discovered.blocks.map((block) => block.metadataFile),
+    ...discovered.entries.map((entry) => entry.source),
+  ]);
+
+  for (const file of files) {
+    hash.update(file);
+    hash.update('\0');
+    hash.update(existsSync(file) ? readFileSync(file) : '');
+    hash.update('\0');
+  }
+
+  return hash.digest('hex');
+}
+
+function unique(values: string[]) {
+  return [...new Set(values)];
 }
 
 function discoverAssets(config: LoadedViteWpConfig): DiscoveredAssets {

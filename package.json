@@ -35,6 +35,10 @@
       "types": "./dist/wordpress/hooks.d.ts",
       "import": "./dist/wordpress/hooks.js"
     },
+    "./wordpress/blocks": {
+      "types": "./dist/wordpress/blocks.d.ts",
+      "import": "./dist/wordpress/blocks.js"
+    },
     "./wordpress/templates": {
       "types": "./dist/wordpress/templates.d.ts",
       "import": "./dist/wordpress/templates.js"

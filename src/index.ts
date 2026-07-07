@@ -14,3 +14,10 @@ export type {
   WpRouteCollectionFilter,
   WpRouteEntryFilter,
 } from './content.js';
+export type {
+  WpBlockEditProps,
+  WpBlockSaveProps,
+  WpBlockSettings,
+  WpGlobal,
+  WpMedia,
+} from './wordpress/blocks.js';
