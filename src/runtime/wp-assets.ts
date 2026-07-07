@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 import { build, type InlineConfig } from 'vite';
 import type { LoadedViteWpConfig } from '../config.js';
@@ -62,10 +62,8 @@ export async function buildWordPressAssets(
   }
 
   const outDir = resolve(config.root, config.blocks.outDir);
-  mkdirSync(outDir, { recursive: true });
-
-  await build(viteAssetConfig(config, outDir, discovered.entries, options.mode ?? 'production'));
-  const manifest = writeAssetsManifest(config, outDir, discovered);
+  const builtEntries = await buildAssetEntries(config, outDir, discovered.entries, options.mode ?? 'production');
+  const manifest = writeAssetsManifest(config, outDir, discovered, builtEntries);
   console.log(`✓ WordPress assets built (${discovered.entries.length} entr${discovered.entries.length === 1 ? 'y' : 'ies'})`);
   return manifest;
 }
@@ -78,53 +76,34 @@ export async function startWordPressAssetWatcher(config: LoadedViteWpConfig): Pr
   }
 
   const outDir = resolve(config.root, config.blocks.outDir);
-  mkdirSync(outDir, { recursive: true });
+  console.log('Building WordPress block/plugin assets...');
+  const builtEntries = await buildAssetEntries(config, outDir, discovered.entries, 'development');
+  writeAssetsManifest(config, outDir, discovered, builtEntries);
+  console.log(`✓ WordPress assets watching (${discovered.entries.length} entr${discovered.entries.length === 1 ? 'y' : 'ies'})`);
 
-  const watcher = await build({
-    ...viteAssetConfig(config, outDir, discovered.entries, 'development'),
-    build: {
-      ...viteAssetConfig(config, outDir, discovered.entries, 'development').build,
-      watch: {},
-    },
-  }) as {
-    on: (event: 'event', callback: (event: { code: string; error?: { message?: string } }) => void) => void;
-    close: () => Promise<void> | void;
-  };
-
-  await new Promise<void>((resolve, reject) => {
-    let settled = false;
-
-    watcher.on('event', (event) => {
-      if (event.code === 'START') {
-        console.log('Building WordPress block/plugin assets...');
-      }
-
-      if (event.code === 'END') {
-        writeAssetsManifest(config, outDir, discovered);
-        console.log(`✓ WordPress assets watching (${discovered.entries.length} entr${discovered.entries.length === 1 ? 'y' : 'ies'})`);
-
-        if (!settled) {
-          settled = true;
-          resolve();
-        }
-      }
-
-      if (event.code === 'ERROR') {
-        console.error(`WordPress asset build failed: ${event.error?.message ?? 'unknown error'}`);
-
-        if (!settled) {
-          settled = true;
-          reject(new Error(event.error?.message ?? 'WordPress asset build failed.'));
-        }
-      }
-    });
-  });
+  const watchers = discovered.entries.map((entry) => watch(entry.source, () => scheduleAssetRebuild(config, outDir, discovered)));
 
   return {
     stop: async () => {
-      await watcher.close();
+      for (const watcher of watchers) {
+        watcher.close();
+      }
     },
   };
+}
+
+let rebuildTimer: NodeJS.Timeout | undefined;
+function scheduleAssetRebuild(config: LoadedViteWpConfig, outDir: string, discovered: DiscoveredAssets) {
+  clearTimeout(rebuildTimer);
+  rebuildTimer = setTimeout(async () => {
+    try {
+      const builtEntries = await buildAssetEntries(config, outDir, discovered.entries, 'development');
+      writeAssetsManifest(config, outDir, discovered, builtEntries);
+      console.log('✓ WordPress assets rebuilt');
+    } catch (error) {
+      console.error(`WordPress asset rebuild failed: ${error instanceof Error ? error.message : error}`);
+    }
+  }, 100);
 }
 
 function discoverAssets(config: LoadedViteWpConfig): DiscoveredAssets {
@@ -137,8 +116,38 @@ function discoverAssets(config: LoadedViteWpConfig): DiscoveredAssets {
   };
 }
 
-function writeAssetsManifest(config: LoadedViteWpConfig, outDir: string, discovered: DiscoveredAssets) {
-  const builtEntries = withBuiltFiles(outDir, discovered.entries);
+async function buildAssetEntries(
+  config: LoadedViteWpConfig,
+  outDir: string,
+  entries: AssetEntry[],
+  mode: 'development' | 'production',
+) {
+  rmSync(outDir, { recursive: true, force: true });
+  mkdirSync(outDir, { recursive: true });
+  const builtEntries = new Map<string, AssetEntry>();
+
+  for (const entry of entries) {
+    if (entry.kind === 'style') {
+      const file = `assets/${entry.id}.css`;
+      mkdirSync(dirname(join(outDir, file)), { recursive: true });
+      copyFileSync(entry.source, join(outDir, file));
+      builtEntries.set(entry.id, { ...entry, file, css: [] });
+      continue;
+    }
+
+    await build(viteAssetConfig(config, outDir, entry, mode));
+    builtEntries.set(entry.id, { ...entry, file: `scripts/${entry.id}.js`, css: [] });
+  }
+
+  return builtEntries;
+}
+
+function writeAssetsManifest(
+  config: LoadedViteWpConfig,
+  outDir: string,
+  discovered: DiscoveredAssets,
+  builtEntries: Map<string, AssetEntry>,
+) {
   for (const block of discovered.blocks) {
     writeGeneratedBlockMetadata(outDir, block, builtEntries);
   }
@@ -215,25 +224,6 @@ function generatedBlockMetadataFile(outDir: string, block: DiscoveredBlock) {
   return join(generatedBlockDirectory(outDir, block), 'block.json');
 }
 
-function withBuiltFiles(outDir: string, entries: AssetEntry[]) {
-  const viteManifestFile = join(outDir, '.vite/manifest.json');
-  const viteManifest = existsSync(viteManifestFile)
-    ? JSON.parse(readFileSync(viteManifestFile, 'utf8')) as Record<string, { name?: string; file?: string; css?: string[]; src?: string }>
-    : {};
-  const byId = new Map<string, AssetEntry>();
-
-  for (const entry of entries) {
-    const chunk = Object.values(viteManifest).find((item) => item.name === entry.id || item.src === entry.source);
-    byId.set(entry.id, {
-      ...entry,
-      file: chunk?.file,
-      css: chunk?.css ?? [],
-    });
-  }
-
-  return byId;
-}
-
 function discoverBlocks(config: LoadedViteWpConfig): DiscoveredBlock[] {
   const files = config.blocks.entries.flatMap((pattern) => findFiles(config.root, pattern));
 
@@ -276,7 +266,7 @@ function discoverPluginEntries(config: LoadedViteWpConfig): AssetEntry[] {
 function viteAssetConfig(
   config: LoadedViteWpConfig,
   outDir: string,
-  entries: AssetEntry[],
+  entry: AssetEntry,
   mode: 'development' | 'production',
 ): InlineConfig {
   return {
@@ -284,14 +274,17 @@ function viteAssetConfig(
     mode,
     logLevel: 'warn',
     build: {
-      emptyOutDir: true,
-      manifest: true,
+      emptyOutDir: false,
+      manifest: false,
       outDir,
       sourcemap: mode === 'development',
       rollupOptions: {
-        input: Object.fromEntries(entries.map((entry) => [entry.id, entry.source])),
+        input: {
+          [entry.id]: entry.source,
+        },
         external: [/^@wordpress\//],
         output: {
+          format: 'iife',
           entryFileNames: 'scripts/[name].js',
           chunkFileNames: 'scripts/[name]-[hash].js',
           assetFileNames: 'assets/[name]-[hash][extname]',
