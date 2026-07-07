@@ -1,0 +1,35 @@
+{
+  "apiVersion": 3,
+  "name": "vitewp/hero",
+  "title": "ViteWP Hero",
+  "category": "design",
+  "icon": "format-image",
+  "description": "A simple ViteWP test block with a media-library image and headline.",
+  "supports": {
+    "html": false
+  },
+  "attributes": {
+    "headline": {
+      "type": "string",
+      "source": "html",
+      "selector": "h1"
+    },
+    "imageId": {
+      "type": "number"
+    },
+    "imageUrl": {
+      "type": "string",
+      "source": "attribute",
+      "selector": "img",
+      "attribute": "src"
+    },
+    "imageAlt": {
+      "type": "string",
+      "source": "attribute",
+      "selector": "img",
+      "attribute": "alt"
+    }
+  },
+  "editorScript": "file:./edit.js",
+  "style": "file:./style.css"
+}
