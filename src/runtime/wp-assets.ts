@@ -186,11 +186,9 @@ function writeGeneratedBlockMetadata(outDir: string, block: DiscoveredBlock, bui
 }
 
 function blockAssetReference(blockDirectory: string, outDir: string, entry: AssetEntry) {
-  if (!entry.file) {
-    return entry.handle;
-  }
-
-  return `file:./${relative(blockDirectory, join(outDir, entry.file)).replaceAll('\\', '/')}`;
+  void blockDirectory;
+  void outDir;
+  return entry.handle;
 }
 
 function writeScriptAssetMetadata(outDir: string, entry: AssetEntry) {

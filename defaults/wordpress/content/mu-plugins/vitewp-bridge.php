@@ -248,6 +248,7 @@ function vitewp_bridge_blocks(): array
         'blocks' => array_map(function (array $block) use ($registry) {
             $name = (string) ($block['name'] ?? '');
             $directory = vitewp_bridge_project_path((string) ($block['directory'] ?? ''));
+            $block_type = $name !== '' && $registry->is_registered($name) ? $registry->get_registered($name) : null;
 
             return [
                 'name' => $name,
@@ -255,9 +256,35 @@ function vitewp_bridge_blocks(): array
                 'blockJson' => $directory ? $directory . '/block.json' : null,
                 'blockJsonExists' => $directory ? file_exists($directory . '/block.json') : false,
                 'registered' => $name !== '' && $registry->is_registered($name),
+                'editorScriptHandles' => vitewp_bridge_block_type_property($block_type, 'editor_script_handles'),
+                'scriptHandles' => vitewp_bridge_block_type_property($block_type, 'script_handles'),
+                'styleHandles' => vitewp_bridge_block_type_property($block_type, 'style_handles'),
+                'registeredAssets' => array_map('vitewp_bridge_asset_status', is_array($block['entries'] ?? null) ? $block['entries'] : []),
                 'entries' => $block['entries'] ?? [],
             ];
         }, is_array($manifest['blocks'] ?? null) ? $manifest['blocks'] : []),
+    ];
+}
+
+function vitewp_bridge_block_type_property($block_type, string $property): array
+{
+    if (! is_object($block_type) || ! isset($block_type->{$property}) || ! is_array($block_type->{$property})) {
+        return [];
+    }
+
+    return array_values($block_type->{$property});
+}
+
+function vitewp_bridge_asset_status(array $entry): array
+{
+    $handle = (string) ($entry['handle'] ?? '');
+    $kind = (string) ($entry['kind'] ?? '');
+
+    return [
+        'handle' => $handle,
+        'kind' => $kind,
+        'registered' => $kind === 'style' ? wp_style_is($handle, 'registered') : wp_script_is($handle, 'registered'),
+        'enqueued' => $kind === 'style' ? wp_style_is($handle, 'enqueued') : wp_script_is($handle, 'enqueued'),
     ];
 }
 
