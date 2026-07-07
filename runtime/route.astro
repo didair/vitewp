@@ -27,11 +27,22 @@ if (!route) {
 
 const projectTemplates = import.meta.glob<TemplateModule>('/src/templates/**/*.astro');
 const defaultTemplates = import.meta.glob<TemplateModule>('../defaults/templates/**/*.astro');
+const projectLayouts = import.meta.glob<TemplateModule>('/src/templates/layouts/**/*.astro');
+const defaultLayouts = import.meta.glob<TemplateModule>('../defaults/templates/layouts/**/*.astro');
 let Template: any = null;
+let Layout: any = null;
 let templatePath = '';
 let templateSource: 'project' | 'vite-wp' | null = null;
 const showDebug = import.meta.env.DEV;
 let context = null;
+
+const projectLayoutLoader = projectLayouts['/src/templates/layouts/Base.astro'];
+const defaultLayoutLoader = defaultLayouts['../defaults/templates/layouts/Base.astro'];
+const layoutLoader = projectLayoutLoader ?? defaultLayoutLoader;
+
+if (layoutLoader) {
+  Layout = (await layoutLoader()).default;
+}
 
 if (route) {
   context = createTemplateContext(route, {
@@ -84,30 +95,21 @@ const toolbarRouteInfo = showDebug ? {
   templateSource,
   candidateTemplates: candidates,
 } : null;
-const toolbarRouteInfoJson = toolbarRouteInfo
-  ? JSON.stringify(toolbarRouteInfo).replaceAll('<', '\u003c')
-  : '';
 ---
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>{context?.title ? `${context.title.replace(/<[^>]+>/g, '')} · ViteWP` : 'Not found · ViteWP'}</title>
-    {toolbarRouteInfoJson && (
-      <script is:inline set:html={`window.__VITEWP_ROUTE_INFO__ = ${toolbarRouteInfoJson}; window.dispatchEvent(new CustomEvent('vitewp:route-info', { detail: window.__VITEWP_ROUTE_INFO__ }));`} />
-    )}
-  </head>
-  <body>
-    <main>
-      {Template && context ? (
-        <Template {...context} />
-      ) : Template ? (
-        <Template slug={slug} />
-      ) : (
-        <article>
-          <h1>Not found</h1>
-          <p>No WordPress route matched <code>{Astro.url.pathname}</code>.</p>
-        </article>
-      )}
-    </main>
-  </body>
-</html>
+{Template && context ? (
+  <Template {...context} Layout={Layout} toolbarRouteInfo={toolbarRouteInfo} />
+) : Template ? (
+  <Template slug={slug} Layout={Layout} toolbarRouteInfo={toolbarRouteInfo} />
+) : Layout ? (
+  <Layout title="Not found" toolbarRouteInfo={toolbarRouteInfo}>
+    <article>
+      <h1>Not found</h1>
+      <p>No WordPress route matched <code>{Astro.url.pathname}</code>.</p>
+    </article>
+  </Layout>
+) : (
+  <article>
+    <h1>Not found</h1>
+    <p>No WordPress route matched <code>{Astro.url.pathname}</code>.</p>
+  </article>
+)}

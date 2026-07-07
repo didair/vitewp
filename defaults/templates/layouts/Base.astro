@@ -1,0 +1,27 @@
+---
+interface Props {
+  title?: string;
+  toolbarRouteInfo?: unknown;
+}
+
+const { title = 'ViteWP', toolbarRouteInfo = null } = Astro.props;
+const pageTitle = title ? `${String(title).replace(/<[^>]+>/g, '')} · ViteWP` : 'ViteWP';
+const toolbarRouteInfoJson = import.meta.env.DEV && toolbarRouteInfo
+  ? JSON.stringify(toolbarRouteInfo).replaceAll('<', '\\u003c')
+  : '';
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    {toolbarRouteInfoJson && (
+      <script is:inline set:html={`window.__VITEWP_ROUTE_INFO__ = ${toolbarRouteInfoJson}; window.dispatchEvent(new CustomEvent('vitewp:route-info', { detail: window.__VITEWP_ROUTE_INFO__ }));`} />
+    )}
+  </head>
+  <body>
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>

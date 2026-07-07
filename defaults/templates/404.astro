@@ -1,11 +1,14 @@
 ---
 interface Props {
+  Layout?: any;
   slug?: string;
 }
 
-const { slug = '' } = Astro.props;
+const { Layout, slug = '' } = Astro.props;
 ---
-<article>
-  <h1>Not found</h1>
-  <p>No WordPress route matched <code>/{slug}</code>.</p>
-</article>
+<Layout {...Astro.props} title="Not found">
+  <article>
+    <h1>Not found</h1>
+    <p>No WordPress route matched <code>/{slug}</code>.</p>
+  </article>
+</Layout>

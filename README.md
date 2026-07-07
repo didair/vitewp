@@ -78,6 +78,7 @@ Examples:
 
 ```txt
 src/templates/pages/front-page.astro
+src/templates/layouts/Base.astro
 src/templates/pages/page-about.astro
 src/templates/posts/single.astro
 src/templates/posts/archive.astro

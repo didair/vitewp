@@ -1,12 +1,15 @@
 ---
 interface Props {
+  Layout?: any;
   title?: string;
   content?: string;
 }
 
-const { title = 'Untitled page', content = '' } = Astro.props;
+const { Layout, title = 'Untitled page', content = '' } = Astro.props;
 ---
-<article>
-  <h1>{title}</h1>
-  <div set:html={content} />
-</article>
+<Layout {...Astro.props}>
+  <article>
+    <h1>{title}</h1>
+    <div set:html={content} />
+  </article>
+</Layout>
