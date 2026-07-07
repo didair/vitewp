@@ -90,6 +90,12 @@ add_action('rest_api_init', function () {
         },
     ]);
 
+    register_rest_route('vitewp/v1', '/blocks', [
+        'methods' => WP_REST_Server::READABLE,
+        'permission_callback' => '__return_true',
+        'callback' => 'vitewp_bridge_blocks',
+    ]);
+
     register_rest_route('vitewp/v1', '/menus', [
         'methods' => WP_REST_Server::READABLE,
         'permission_callback' => '__return_true',
@@ -226,6 +232,33 @@ function vitewp_bridge_register_bundled_blocks(): void
             register_block_type($directory);
         }
     }
+}
+
+function vitewp_bridge_blocks(): array
+{
+    $manifest_file = defined('VITEWP_ASSETS_MANIFEST') ? (string) VITEWP_ASSETS_MANIFEST : '';
+    $manifest = vitewp_bridge_assets_manifest();
+    $registry = WP_Block_Type_Registry::get_instance();
+
+    return [
+        'manifest' => [
+            'path' => $manifest_file,
+            'exists' => $manifest_file !== '' && file_exists($manifest_file),
+        ],
+        'blocks' => array_map(function (array $block) use ($registry) {
+            $name = (string) ($block['name'] ?? '');
+            $directory = vitewp_bridge_project_path((string) ($block['directory'] ?? ''));
+
+            return [
+                'name' => $name,
+                'directory' => $directory,
+                'blockJson' => $directory ? $directory . '/block.json' : null,
+                'blockJsonExists' => $directory ? file_exists($directory . '/block.json') : false,
+                'registered' => $name !== '' && $registry->is_registered($name),
+                'entries' => $block['entries'] ?? [],
+            ];
+        }, is_array($manifest['blocks'] ?? null) ? $manifest['blocks'] : []),
+    ];
 }
 
 function vitewp_bridge_enqueue_plugin_assets(): void

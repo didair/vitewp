@@ -172,12 +172,41 @@ function writeGeneratedBlockMetadata(outDir: string, block: DiscoveredBlock, bui
 
     if (entries.length === 0) continue;
 
+    for (const entry of entries) {
+      writeScriptAssetMetadata(outDir, entry);
+    }
+
+    const values = entries.map((entry) => blockAssetReference(directory, outDir, entry));
     metadata[field as string] = Array.isArray(block.metadata[field as string])
-      ? entries.map((entry) => entry.handle)
-      : entries[0]?.handle;
+      ? values
+      : values[0];
   }
 
   writeFileSync(generatedBlockMetadataFile(outDir, block), `${JSON.stringify(metadata, null, 2)}\n`, 'utf8');
+}
+
+function blockAssetReference(blockDirectory: string, outDir: string, entry: AssetEntry) {
+  if (!entry.file) {
+    return entry.handle;
+  }
+
+  return `file:./${relative(blockDirectory, join(outDir, entry.file)).replaceAll('\\', '/')}`;
+}
+
+function writeScriptAssetMetadata(outDir: string, entry: AssetEntry) {
+  if (entry.kind !== 'script' || !entry.file) return;
+
+  const assetFile = join(outDir, entry.file.replace(/\.m?js$/, '.asset.php'));
+  mkdirSync(dirname(assetFile), { recursive: true });
+  writeFileSync(
+    assetFile,
+    `<?php return array('dependencies' => ${phpArray(entry.dependencies)}, 'version' => null);\n`,
+    'utf8',
+  );
+}
+
+function phpArray(values: string[]) {
+  return `array(${values.map((value) => `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`).join(', ')})`;
 }
 
 function generatedBlockDirectory(outDir: string, block: DiscoveredBlock) {
