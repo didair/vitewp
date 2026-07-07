@@ -19,6 +19,7 @@ interface AssetEntry {
   id: string;
   source: string;
   kind: 'script' | 'style';
+  field?: string;
   handle: string;
   dependencies: string[];
   file?: string;
@@ -138,12 +139,16 @@ function discoverAssets(config: LoadedViteWpConfig): DiscoveredAssets {
 
 function writeAssetsManifest(config: LoadedViteWpConfig, outDir: string, discovered: DiscoveredAssets) {
   const builtEntries = withBuiltFiles(outDir, discovered.entries);
+  for (const block of discovered.blocks) {
+    writeGeneratedBlockMetadata(outDir, block, builtEntries);
+  }
+
   const manifest: AssetsManifest = {
     version: 1,
     blocks: discovered.blocks.map((block) => ({
       name: block.name,
-      metadataFile: relative(config.root, block.metadataFile),
-      directory: relative(config.root, block.directory),
+      metadataFile: relative(config.root, generatedBlockMetadataFile(outDir, block)),
+      directory: relative(config.root, generatedBlockDirectory(outDir, block)),
       entries: block.entries.map((entry) => builtEntries.get(entry.id) ?? entry).map(relativeEntry(config.root)),
     })),
     plugins: discovered.pluginEntries.map((entry) => builtEntries.get(entry.id) ?? entry).map(relativeEntry(config.root)),
@@ -151,6 +156,36 @@ function writeAssetsManifest(config: LoadedViteWpConfig, outDir: string, discove
 
   writeFileSync(join(outDir, 'vitewp-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   return manifest;
+}
+
+function writeGeneratedBlockMetadata(outDir: string, block: DiscoveredBlock, builtEntries: Map<string, AssetEntry>) {
+  const directory = generatedBlockDirectory(outDir, block);
+  const metadata = { ...block.metadata };
+  const fields = new Set(block.entries.map((entry) => entry.field).filter(Boolean));
+
+  mkdirSync(directory, { recursive: true });
+
+  for (const field of fields) {
+    const entries = block.entries
+      .filter((entry) => entry.field === field)
+      .map((entry) => builtEntries.get(entry.id) ?? entry);
+
+    if (entries.length === 0) continue;
+
+    metadata[field as string] = Array.isArray(block.metadata[field as string])
+      ? entries.map((entry) => entry.handle)
+      : entries[0]?.handle;
+  }
+
+  writeFileSync(generatedBlockMetadataFile(outDir, block), `${JSON.stringify(metadata, null, 2)}\n`, 'utf8');
+}
+
+function generatedBlockDirectory(outDir: string, block: DiscoveredBlock) {
+  return join(outDir, 'blocks', safeId(block.name));
+}
+
+function generatedBlockMetadataFile(outDir: string, block: DiscoveredBlock) {
+  return join(generatedBlockDirectory(outDir, block), 'block.json');
 }
 
 function withBuiltFiles(outDir: string, entries: AssetEntry[]) {
@@ -188,6 +223,7 @@ function discoverBlocks(config: LoadedViteWpConfig): DiscoveredBlock[] {
           id: safeId(`${name}-${field}-${basename(source, extname(source))}`),
           source,
           kind,
+          field,
           handle: safeId(`${name}-${field}`),
           dependencies: dependenciesForSource(source),
         }));

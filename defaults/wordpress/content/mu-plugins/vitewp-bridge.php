@@ -216,6 +216,10 @@ function vitewp_bridge_register_bundled_blocks(): void
     $manifest = vitewp_bridge_assets_manifest();
 
     foreach (($manifest['blocks'] ?? []) as $block) {
+        foreach (($block['entries'] ?? []) as $entry) {
+            vitewp_bridge_register_asset_entry($entry);
+        }
+
         $directory = vitewp_bridge_project_path((string) ($block['directory'] ?? ''));
 
         if ($directory && file_exists($directory . '/block.json')) {
@@ -285,6 +289,37 @@ function vitewp_bridge_enqueue_asset_entry(array $entry): void
 
     foreach (($entry['css'] ?? []) as $index => $css) {
         wp_enqueue_style($handle . '-css-' . $index, vitewp_bridge_asset_url((string) $css), [], null);
+    }
+}
+
+function vitewp_bridge_register_asset_entry(array $entry): void
+{
+    $file = (string) ($entry['file'] ?? '');
+    $handle = (string) ($entry['handle'] ?? '');
+
+    if ($file === '' || $handle === '') {
+        return;
+    }
+
+    $dependencies = is_array($entry['dependencies'] ?? null) ? array_values($entry['dependencies']) : [];
+    $url = vitewp_bridge_asset_url($file);
+
+    if (($entry['kind'] ?? '') === 'style') {
+        if (! wp_style_is($handle, 'registered')) {
+            wp_register_style($handle, $url, $dependencies, null);
+        }
+        return;
+    }
+
+    if (! wp_script_is($handle, 'registered')) {
+        wp_register_script($handle, $url, $dependencies, null, true);
+    }
+
+    foreach (($entry['css'] ?? []) as $index => $css) {
+        $style_handle = $handle . '-css-' . $index;
+        if (! wp_style_is($style_handle, 'registered')) {
+            wp_register_style($style_handle, vitewp_bridge_asset_url((string) $css), [], null);
+        }
     }
 }
 
