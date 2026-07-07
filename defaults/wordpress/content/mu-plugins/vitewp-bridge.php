@@ -39,7 +39,8 @@ add_action('init', function () {
 
 add_action('init', 'vitewp_bridge_register_bundled_blocks', 20);
 add_action('enqueue_block_assets', 'vitewp_bridge_enqueue_block_assets');
-add_action('enqueue_block_editor_assets', 'vitewp_bridge_enqueue_block_assets');
+add_action('enqueue_block_editor_assets', 'vitewp_bridge_enqueue_block_assets', 20);
+add_action('admin_enqueue_scripts', 'vitewp_bridge_enqueue_block_assets', 20);
 add_action('wp_enqueue_scripts', 'vitewp_bridge_enqueue_plugin_assets');
 add_action('admin_enqueue_scripts', 'vitewp_bridge_enqueue_plugin_assets');
 
