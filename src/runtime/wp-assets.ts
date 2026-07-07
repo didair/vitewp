@@ -295,12 +295,26 @@ function dependenciesForSource(source: string) {
     }
   }
 
+  for (const [global, handle] of Object.entries(wordPressGlobalDependencies)) {
+    if (code.includes(global)) {
+      dependencies.add(handle);
+    }
+  }
+
   return [...dependencies];
 }
 
 function wordPressDependencyHandle(specifier: string) {
   return specifier.replace('@wordpress/', 'wp-').replace(/\//g, '-');
 }
+
+const wordPressGlobalDependencies: Record<string, string> = {
+  'wp.blocks': 'wp-blocks',
+  'wp.blockEditor': 'wp-block-editor',
+  'wp.components': 'wp-components',
+  'wp.element': 'wp-element',
+  'wp.i18n': 'wp-i18n',
+};
 
 function safeId(value: string) {
   return value.replace(/^@/, '').replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
