@@ -57,6 +57,9 @@ my-site/
   composer.json
   .env
 
+  .vitewp/
+    types.d.ts             # generated WordPress types
+
   src/
     live.config.ts
     templates/             # optional template overrides
@@ -91,7 +94,7 @@ Template props are typed by importing the matching generated type as Astro's `Pr
 
 ```astro
 ---
-import type { WpPageTemplateProps as Props } from '../../wordpress/generated-types';
+import type { WpPageTemplateProps as Props } from 'wp-types';
 
 const { title, content, item, route, Layout } = Astro.props;
 ---
@@ -106,6 +109,9 @@ Available generated types include `WpPageTemplateProps`, `WpSingleTemplateProps`
 `WpArchiveTemplateProps`, `WpSearchTemplateProps`, and `WpTaxonomyTemplateProps`.
 Custom post types and taxonomies can be narrowed with a generic, such as
 `WpSingleTemplateProps<'product'>`.
+
+`npm run types` writes these project-specific types to `.vitewp/types.d.ts`.
+ViteWP exposes that generated file through the `wp-types` alias.
 
 ## WordPress data
 

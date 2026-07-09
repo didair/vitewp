@@ -26,11 +26,18 @@ export async function runTypes() {
   const config = await loadViteWpConfig();
   const schema = await fetchBridgeTypes(config.wordpress.url);
   const output = resolve(config.root, config.types.output);
+  const aliasOutput = resolve(config.root, '.vitewp/types.d.ts');
+  const types = renderTypes(schema);
 
   mkdirSync(dirname(output), { recursive: true });
-  writeFileSync(output, renderTypes(schema), 'utf8');
+  writeFileSync(output, types, 'utf8');
 
-  console.log(`✓ Generated WordPress types at ${relative(config.root, output)}`);
+  if (output !== aliasOutput) {
+    mkdirSync(dirname(aliasOutput), { recursive: true });
+    writeFileSync(aliasOutput, types, 'utf8');
+  }
+
+  console.log(`✓ Generated WordPress types at ${relative(config.root, aliasOutput)}`);
 }
 
 async function fetchBridgeTypes(baseUrl: string) {

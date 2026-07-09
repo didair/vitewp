@@ -10,6 +10,9 @@
     "declaration": true,
     "outDir": "dist",
     "rootDir": "src",
+    "paths": {
+      "wp-types": ["./.vitewp/types.d.ts"]
+    },
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true

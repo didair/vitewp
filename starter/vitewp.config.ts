@@ -24,7 +24,7 @@ export default defineConfig({
     directory: 'src/templates',
   },
   types: {
-    output: 'src/wordpress/generated-types.ts',
+    output: '.vitewp/types.d.ts',
   },
   blocks: {
     entries: ['src/blocks/**/block.json'],

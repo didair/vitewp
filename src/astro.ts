@@ -12,15 +12,19 @@ export default function vitewp(_options: ViteWpAstroOptions = {}): AstroIntegrat
     name: 'vitewp',
     hooks: {
       'astro:config:setup': ({ command, config, injectRoute, addDevToolbarApp, logger, updateConfig }) => {
-        if (isSourceIntegration()) {
-          updateConfig({
-            vite: {
-              resolve: {
-                alias: sourceAliases(),
-              },
+        updateConfig({
+          vite: {
+            resolve: {
+              alias: [
+                {
+                  find: 'wp-types',
+                  replacement: fileURLToPath(new URL('./.vitewp/types.d.ts', config.root)),
+                },
+                ...(isSourceIntegration() ? sourceAliases() : []),
+              ],
             },
-          });
-        }
+          },
+        });
 
         if (!hasProjectCatchAllRoute(fileURLToPath(config.root))) {
           injectRoute({

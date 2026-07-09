@@ -168,7 +168,7 @@ export async function loadViteWpConfig(root = process.cwd()): Promise<LoadedVite
       directory: userConfig.templates?.directory ?? 'src/templates',
     },
     types: {
-      output: userConfig.types?.output ?? 'src/wordpress/generated-types.ts',
+      output: userConfig.types?.output ?? '.vitewp/types.d.ts',
     },
     dev: {
       phpHost: userConfig.dev?.phpHost ?? env('VITEWP_PHP_HOST', '127.0.0.1'),
