@@ -29,6 +29,8 @@ const wordpressFiles = [
 
 export async function startUnifiedProxy(config: LoadedViteWpConfig): Promise<ProxyServer> {
   const publicUrl = new URL(config.wordpress.url);
+  const listenHost = config.dev.proxyHost || publicUrl.hostname;
+  const listenPort = config.dev.proxyPort || Number(publicUrl.port || 3000);
   const phpUrl = new URL(`http://${config.dev.phpHost}:${config.dev.phpPort}`);
   const astroUrl = new URL(`http://${config.dev.astroHost}:${config.dev.astroPort}`);
   const contentDir = resolve(config.root, config.wordpress.contentDir);
@@ -47,7 +49,7 @@ export async function startUnifiedProxy(config: LoadedViteWpConfig): Promise<Pro
 
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
-    server.listen(Number(publicUrl.port || 3000), publicUrl.hostname, () => {
+    server.listen(listenPort, listenHost, () => {
       server.off('error', reject);
       resolve();
     });

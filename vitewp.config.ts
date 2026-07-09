@@ -12,7 +12,7 @@ export default defineConfig({
   },
   wordpress: {
     mode: 'local',
-    url: 'http://localhost:3000',
+    url: process.env.WP_URL ?? 'http://localhost:3000',
     docroot: 'wordpress/public',
     contentDir: 'wordpress/content',
   },

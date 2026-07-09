@@ -40,6 +40,8 @@ export interface ViteWpConfig {
     output?: string;
   };
   dev?: {
+    proxyHost?: string;
+    proxyPort?: number;
     phpHost?: string;
     phpPort?: number;
     astroHost?: string;
@@ -91,6 +93,8 @@ export interface LoadedViteWpConfig {
     output: string;
   };
   dev: {
+    proxyHost: string;
+    proxyPort: number;
     phpHost: string;
     phpPort: number;
     astroHost: string;
@@ -171,6 +175,8 @@ export async function loadViteWpConfig(root = process.cwd()): Promise<LoadedVite
       output: userConfig.types?.output ?? '.vitewp/types.d.ts',
     },
     dev: {
+      proxyHost: userConfig.dev?.proxyHost ?? env('VITEWP_PROXY_HOST', ''),
+      proxyPort: userConfig.dev?.proxyPort ?? envPort('VITEWP_PROXY_PORT'),
       phpHost: userConfig.dev?.phpHost ?? env('VITEWP_PHP_HOST', '127.0.0.1'),
       phpPort: userConfig.dev?.phpPort ?? envPort('VITEWP_PHP_PORT'),
       astroHost: userConfig.dev?.astroHost ?? env('VITEWP_ASTRO_HOST', '127.0.0.1'),

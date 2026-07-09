@@ -44,7 +44,9 @@ export async function runDev() {
     config.dev.phpPort = await resolveInternalPort(config.dev.phpHost, config.dev.phpPort);
     config.dev.astroPort = await resolveInternalPort(config.dev.astroHost, config.dev.astroPort);
     const publicUrl = new URL(config.wordpress.url);
-    await assertPortAvailable(publicUrl.hostname, Number(publicUrl.port || 3000), 'ViteWP proxy');
+    const proxyHost = config.dev.proxyHost || publicUrl.hostname;
+    const proxyPort = config.dev.proxyPort || Number(publicUrl.port || 3000);
+    await assertPortAvailable(proxyHost, proxyPort, 'ViteWP proxy');
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;
@@ -56,6 +58,10 @@ export async function runDev() {
 
   console.log('');
   if (verbose) {
+    const publicUrl = new URL(config.wordpress.url);
+    const proxyHost = config.dev.proxyHost || publicUrl.hostname;
+    const proxyPort = config.dev.proxyPort || Number(publicUrl.port || 3000);
+    console.log(`✓ ViteWP proxy listener: http://${proxyHost}:${proxyPort}`);
     console.log(`✓ WordPress/PHP internal server: ${phpServerUrl(config)}`);
     console.log(`✓ Astro internal server: http://${config.dev.astroHost}:${config.dev.astroPort}`);
   }

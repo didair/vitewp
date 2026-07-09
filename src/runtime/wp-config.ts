@@ -59,6 +59,21 @@ define('VITEWP_ROOT', ${phpString(config.root)});
 define('VITEWP_INTERNAL_SECRET', ${phpString(process.env.VITEWP_INTERNAL_SECRET ?? '')});
 define('VITEWP_ASSETS_MANIFEST', ${phpString(join(config.root, config.blocks.outDir, 'vitewp-manifest.json'))});
 
+if (
+    (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && str_contains($_SERVER['HTTP_X_FORWARDED_PROTO'], 'https'))
+    || (isset($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on')
+) {
+    $_SERVER['HTTPS'] = 'on';
+}
+if (isset($_SERVER['HTTP_X_FORWARDED_HOST'])) {
+    $_SERVER['HTTP_HOST'] = $_SERVER['HTTP_X_FORWARDED_HOST'];
+}
+if (isset($_SERVER['HTTP_X_FORWARDED_PORT'])) {
+    $_SERVER['SERVER_PORT'] = $_SERVER['HTTP_X_FORWARDED_PORT'];
+} elseif (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+    $_SERVER['SERVER_PORT'] = '443';
+}
+
 if (! defined('ABSPATH')) {
     define('ABSPATH', __DIR__ . '/');
 }
