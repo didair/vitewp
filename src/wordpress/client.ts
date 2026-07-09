@@ -2,10 +2,10 @@ export interface WpRenderedField {
   rendered: string;
 }
 
-export interface WpContentItem {
+export interface WpContentItem<PostType extends string = string> {
   id: number;
   slug: string;
-  type: string;
+  type: PostType;
   link: string;
   title: WpRenderedField;
   content: WpRenderedField;
@@ -67,7 +67,7 @@ export type WpResolvedRoute =
       postType: 'page';
       restBase: 'pages';
       slug: string;
-      item: WpContentItem;
+      item: WpContentItem<'page'>;
       isFrontPage?: boolean;
     }
   | {
@@ -78,7 +78,7 @@ export type WpResolvedRoute =
       item: WpContentItem;
     }
   | {
-      kind: 'postsArchive' | 'postTypeArchive' | 'search';
+      kind: 'postsArchive' | 'postTypeArchive';
       postType: string;
       restBase: string;
       slug: string;
@@ -88,7 +88,19 @@ export type WpResolvedRoute =
       perPage: number;
       total: number;
       totalPages: number;
-      search?: string;
+    }
+  | {
+      kind: 'search';
+      postType: string;
+      restBase: string;
+      slug: string;
+      title: string;
+      items: WpContentItem[];
+      page: number;
+      perPage: number;
+      total: number;
+      totalPages: number;
+      search: string;
     }
   | {
       kind: 'taxonomyArchive';
@@ -185,9 +197,8 @@ export async function resolveWordPressRoute(pathname: string): Promise<WpResolve
     };
   }
 
-  const item = await getById(resolution.restBase, resolution.id);
-
   if (resolution.kind === 'page') {
+    const item = await getById<'page'>(resolution.restBase, resolution.id);
     return {
       kind: 'page',
       postType: 'page',
@@ -198,6 +209,7 @@ export async function resolveWordPressRoute(pathname: string): Promise<WpResolve
     };
   }
 
+  const item = await getById(resolution.restBase, resolution.id);
   return {
     kind: 'single',
     postType: resolution.postType,
@@ -233,11 +245,11 @@ async function resolveViaWordPress(pathname: string) {
   return response.json() as Promise<WpBridgeResolution>;
 }
 
-async function getById(restBase: string, id: number) {
+async function getById<PostType extends string = string>(restBase: string, id: number) {
   const url = new URL(`${getWordPressApiBase()}/${restBase}/${id}`);
   url.searchParams.set('_embed', '1');
 
-  return getJson<WpContentItem>(url);
+  return getJson<WpContentItem<PostType>>(url);
 }
 
 async function getArchive(params: Record<string, string | number | undefined>) {

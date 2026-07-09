@@ -1,7 +1,13 @@
 import type { WpContentItem, WpResolvedRoute } from './client.js';
+import type { AstroComponentFactory } from 'astro/runtime/server/index.js';
 
-export interface TemplateContext {
-  route: WpResolvedRoute;
+type PageRoute = Extract<WpResolvedRoute, { kind: 'page' }>;
+type SingleRoute = Extract<WpResolvedRoute, { kind: 'single' }>;
+type ArchiveRoute = Extract<WpResolvedRoute, { kind: 'postsArchive' | 'postTypeArchive' }>;
+type SearchRoute = Extract<WpResolvedRoute, { kind: 'search' }>;
+type TaxonomyRoute = Extract<WpResolvedRoute, { kind: 'taxonomyArchive' }>;
+
+interface BaseTemplateContext {
   url: string;
   path: string;
   cacheKey: string;
@@ -15,9 +21,86 @@ export interface TemplateContext {
   perPage: number;
   total: number;
   totalPages: number;
-  search?: string;
-  taxonomy?: string;
-  termName?: string;
+}
+
+export interface PageTemplateContext extends BaseTemplateContext {
+  kind: 'page';
+  route: PageRoute;
+  item: WpContentItem<'page'>;
+  postType: 'page';
+  isFrontPage: boolean;
+}
+
+export interface SingleTemplateContext extends BaseTemplateContext {
+  kind: 'single';
+  route: SingleRoute;
+  item: WpContentItem;
+}
+
+export interface ArchiveTemplateContext extends BaseTemplateContext {
+  kind: 'postsArchive' | 'postTypeArchive';
+  route: ArchiveRoute;
+}
+
+export interface SearchTemplateContext extends BaseTemplateContext {
+  kind: 'search';
+  route: SearchRoute;
+  search: string;
+}
+
+export interface TaxonomyTemplateContext extends BaseTemplateContext {
+  kind: 'taxonomyArchive';
+  route: TaxonomyRoute;
+  taxonomy: string;
+  taxonomyRestBase: string;
+  termId: number;
+  termName: string;
+}
+
+export type TemplateContext =
+  | PageTemplateContext
+  | SingleTemplateContext
+  | ArchiveTemplateContext
+  | SearchTemplateContext
+  | TaxonomyTemplateContext;
+
+export interface TemplateRouteInfo {
+  path: string;
+  matched: boolean;
+  kind: TemplateContext['kind'] | '404';
+  liveCollection: {
+    collection: string;
+    entryId: string;
+    cacheHint: unknown;
+  } | null;
+  postType: string | null;
+  slug: string | null;
+  page: number | null;
+  totalPages: number | null;
+  template: string | null;
+  templateSource: 'project' | 'vite-wp' | null;
+  candidateTemplates: string[];
+}
+
+export interface LayoutTemplateProps {
+  title?: string;
+  toolbarRouteInfo?: TemplateRouteInfo | null;
+}
+
+export interface TemplateRuntimeProps {
+  Layout: AstroComponentFactory;
+  toolbarRouteInfo: TemplateRouteInfo | null;
+}
+
+export type PageTemplateProps = PageTemplateContext & TemplateRuntimeProps;
+export type SingleTemplateProps = SingleTemplateContext & TemplateRuntimeProps;
+export type ArchiveTemplateProps = ArchiveTemplateContext & TemplateRuntimeProps;
+export type SearchTemplateProps = SearchTemplateContext & TemplateRuntimeProps;
+export type TaxonomyTemplateProps = TaxonomyTemplateContext & TemplateRuntimeProps;
+export type AnyTemplateProps = TemplateContext & TemplateRuntimeProps;
+
+export interface NotFoundTemplateProps extends TemplateRuntimeProps {
+  slug: string;
 }
 
 export interface TemplateContextOptions {
@@ -27,7 +110,6 @@ export interface TemplateContextOptions {
 
 export function createTemplateContext(route: WpResolvedRoute, options: TemplateContextOptions = {}): TemplateContext {
   const base = {
-    route,
     url: options.url ?? '',
     path: options.path ?? '',
     cacheKey: createCacheKey(route, options),
@@ -36,9 +118,26 @@ export function createTemplateContext(route: WpResolvedRoute, options: TemplateC
   switch (route.kind) {
     case 'postsArchive':
     case 'postTypeArchive':
+      return {
+        ...base,
+        kind: route.kind,
+        route,
+        title: route.title,
+        content: '',
+        excerpt: '',
+        slug: route.slug,
+        postType: route.postType,
+        items: route.items,
+        page: route.page,
+        perPage: route.perPage,
+        total: route.total,
+        totalPages: route.totalPages,
+      };
     case 'search':
       return {
         ...base,
+        kind: route.kind,
+        route,
         title: route.title,
         content: '',
         excerpt: '',
@@ -54,6 +153,8 @@ export function createTemplateContext(route: WpResolvedRoute, options: TemplateC
     case 'taxonomyArchive':
       return {
         ...base,
+        kind: route.kind,
+        route,
         title: route.title,
         content: '',
         excerpt: '',
@@ -65,12 +166,34 @@ export function createTemplateContext(route: WpResolvedRoute, options: TemplateC
         total: route.total,
         totalPages: route.totalPages,
         taxonomy: route.taxonomy,
+        taxonomyRestBase: route.taxonomyRestBase,
+        termId: route.termId,
         termName: route.termName,
       };
     case 'page':
+      return {
+        ...base,
+        kind: route.kind,
+        route,
+        item: route.item,
+        title: route.item.title.rendered,
+        content: route.item.content.rendered,
+        excerpt: route.item.excerpt?.rendered ?? '',
+        slug: route.slug,
+        postType: route.postType,
+        items: [],
+        page: 1,
+        perPage: 0,
+        total: 0,
+        totalPages: 0,
+        isFrontPage: route.isFrontPage ?? false,
+      };
     case 'single':
       return {
         ...base,
+        kind: route.kind,
+        route,
+        item: route.item,
         title: route.item.title.rendered,
         content: route.item.content.rendered,
         excerpt: route.item.excerpt?.rendered ?? '',

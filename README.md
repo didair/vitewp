@@ -87,6 +87,26 @@ src/templates/search.astro
 src/templates/404.astro
 ```
 
+Template props are typed by importing the matching generated type as Astro's `Props` type:
+
+```astro
+---
+import type { WpPageTemplateProps as Props } from '../../wordpress/generated-types';
+
+const { title, content, item, route, Layout } = Astro.props;
+---
+
+<Layout {...Astro.props}>
+  <h1>{title}</h1>
+  <div set:html={content} />
+</Layout>
+```
+
+Available generated types include `WpPageTemplateProps`, `WpSingleTemplateProps`,
+`WpArchiveTemplateProps`, `WpSearchTemplateProps`, and `WpTaxonomyTemplateProps`.
+Custom post types and taxonomies can be narrowed with a generic, such as
+`WpSingleTemplateProps<'product'>`.
+
 ## WordPress data
 
 ViteWP uses Astro Live Collections for WordPress data:

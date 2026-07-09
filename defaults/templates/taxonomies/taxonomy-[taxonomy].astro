@@ -1,16 +1,6 @@
 ---
 import Pagination from '../partials/Pagination.astro';
-import type { WpContentItem } from 'vite-wp/wordpress';
-
-interface Props {
-  Layout?: any;
-  title?: string;
-  taxonomy?: string;
-  termName?: string;
-  items?: WpContentItem[];
-  page?: number;
-  totalPages?: number;
-}
+import type { TaxonomyTemplateProps as Props } from 'vite-wp/wordpress/templates';
 
 const { Layout, title = 'Archive', taxonomy = '', termName = title, items = [], page = 1, totalPages = 1 } = Astro.props;
 ---

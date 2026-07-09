@@ -1,9 +1,5 @@
 ---
-interface Props {
-  Layout?: any;
-  title?: string;
-  content?: string;
-}
+import type { PageTemplateProps as Props } from 'vite-wp/wordpress/templates';
 
 const { Layout, title = 'Home', content = '' } = Astro.props;
 ---

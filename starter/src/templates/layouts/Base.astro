@@ -1,8 +1,5 @@
 ---
-interface Props {
-  title?: string;
-  toolbarRouteInfo?: unknown;
-}
+import type { LayoutTemplateProps as Props } from 'vite-wp/wordpress/templates';
 
 const { title = 'ViteWP', toolbarRouteInfo = null } = Astro.props;
 const pageTitle = title ? `${String(title).replace(/<[^>]+>/g, '')} · ViteWP` : 'ViteWP';

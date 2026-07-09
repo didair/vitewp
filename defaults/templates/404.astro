@@ -1,8 +1,5 @@
 ---
-interface Props {
-  Layout?: any;
-  slug?: string;
-}
+import type { NotFoundTemplateProps as Props } from 'vite-wp/wordpress/templates';
 
 const { Layout, slug = '' } = Astro.props;
 ---
