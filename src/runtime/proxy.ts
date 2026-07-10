@@ -69,10 +69,14 @@ function selectTarget(path: string, phpUrl: URL, astroUrl: URL) {
 }
 
 function isWordPressRequest(path: string) {
-  const pathname = path.split('?')[0] ?? '/';
+  const pathname = new URL(path, 'http://vitewp.local').pathname;
   return wordpressPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
     || wordpressFiles.includes(pathname)
-    || pathname.endsWith('.php');
+    || hasPhpPathSegment(pathname);
+}
+
+function hasPhpPathSegment(pathname: string) {
+  return /(?:^|\/)[^/]+\.php(?:\/|$)/i.test(pathname);
 }
 
 function serveWpContentAsset(request: IncomingMessage, response: ServerResponse, contentDir: string) {
