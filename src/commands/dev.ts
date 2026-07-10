@@ -29,6 +29,7 @@ export async function runDev() {
     process.env.VITEWP_INTERNAL_SECRET ??= randomBytes(32).toString('hex');
     process.env.VITEWP_HOOKS_CACHE ??= config.wordpress.hooks.cache.enabled ? '1' : '0';
     process.env.VITEWP_HOOKS_CACHE_TTL ??= String(config.wordpress.hooks.cache.ttl);
+    process.env.VITEWP_OMIT_DEFAULT_ASSETS ??= config.wordpress.omitDefaultAssets ? '1' : '0';
     await ensureComposerInstall(config);
     writeWordPressConfig(config);
     const result = await runDoctorChecks(config, { live: false });

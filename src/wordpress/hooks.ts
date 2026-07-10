@@ -128,10 +128,7 @@ async function callWordPressHook<T>(body: {
 
   const response = await fetch(`${phpUrl.replace(/\/$/, '')}/index.php?vitewp_internal_hook=1`, {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-vitewp-internal-secret': secret,
-    },
+    headers: hookRequestHeaders(secret),
     body: JSON.stringify(body),
   });
 
@@ -141,6 +138,30 @@ async function callWordPressHook<T>(body: {
   }
 
   return response.json() as Promise<InternalHookResponse<T>>;
+}
+
+function hookRequestHeaders(secret: string) {
+  const headers: Record<string, string> = {
+    'content-type': 'application/json',
+    'x-vitewp-internal-secret': secret,
+  };
+  const publicUrl = process.env.VITEWP_PUBLIC_URL;
+
+  if (publicUrl) {
+    const url = new URL(publicUrl);
+    headers['x-forwarded-host'] = url.host;
+    headers['x-forwarded-proto'] = url.protocol.replace(':', '');
+
+    if (url.port) {
+      headers['x-forwarded-port'] = url.port;
+    }
+
+    if (url.protocol === 'https:') {
+      headers['x-forwarded-ssl'] = 'on';
+    }
+  }
+
+  return headers;
 }
 
 function createCacheKey(

@@ -202,12 +202,22 @@ function proxyUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer, ta
 }
 
 function rewriteRequestHeaders(request: IncomingMessage, publicUrl: URL): http.OutgoingHttpHeaders {
-  return {
+  const headers: http.OutgoingHttpHeaders = {
     ...request.headers,
     host: publicUrl.host,
     'x-forwarded-host': publicUrl.host,
     'x-forwarded-proto': publicUrl.protocol.replace(':', ''),
   };
+
+  if (publicUrl.port) {
+    headers['x-forwarded-port'] = publicUrl.port;
+  }
+
+  if (publicUrl.protocol === 'https:') {
+    headers['x-forwarded-ssl'] = 'on';
+  }
+
+  return headers;
 }
 
 function rewriteResponseHeaders(

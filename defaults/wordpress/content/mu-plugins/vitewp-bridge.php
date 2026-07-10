@@ -190,6 +190,7 @@ function vitewp_bridge_handle_internal_hook(): void
     $hook = (string) ($payload['hook'] ?? '');
     $args = is_array($payload['args'] ?? null) ? array_values($payload['args']) : [];
     $context = is_array($payload['context'] ?? null) ? $payload['context'] : [];
+    $omit_default_assets = vitewp_bridge_should_omit_default_assets();
 
     if ($hook === '' || ! in_array($type, ['action', 'filter'], true)) {
         status_header(400);
@@ -199,6 +200,10 @@ function vitewp_bridge_handle_internal_hook(): void
     }
 
     vitewp_bridge_setup_hook_context($context);
+
+    if ($omit_default_assets) {
+        vitewp_bridge_omit_default_hook_assets($hook);
+    }
 
     if ($type === 'action') {
         ob_start();
@@ -222,6 +227,67 @@ function vitewp_bridge_handle_internal_hook(): void
         'value' => $filtered,
         'rendered' => is_scalar($filtered) ? (string) $filtered : wp_json_encode($filtered),
     ]);
+}
+
+function vitewp_bridge_should_omit_default_assets(): bool
+{
+    return defined('VITEWP_OMIT_DEFAULT_ASSETS') && (bool) VITEWP_OMIT_DEFAULT_ASSETS;
+}
+
+function vitewp_bridge_omit_default_hook_assets(string $hook): void
+{
+    if (! in_array($hook, ['wp_head', 'wp_footer'], true)) {
+        return;
+    }
+
+    if (is_admin()) {
+        return;
+    }
+
+    remove_action('wp_head', 'print_emoji_detection_script', 7);
+    remove_action('wp_print_styles', 'print_emoji_styles');
+    remove_action('wp_head', 'wp_generator');
+    remove_action('wp_head', 'wlwmanifest_link');
+    remove_action('wp_head', 'rsd_link');
+    remove_action('wp_head', 'wp_shortlink_wp_head');
+    remove_action('wp_head', 'rest_output_link_wp_head', 10);
+    remove_action('wp_head', 'wp_oembed_add_discovery_links');
+    remove_action('wp_head', 'wp_oembed_add_host_js');
+
+    add_action('wp_enqueue_scripts', 'vitewp_bridge_dequeue_default_assets', 1000);
+    add_action('wp_print_scripts', 'vitewp_bridge_dequeue_default_assets', 0);
+    add_action('wp_print_styles', 'vitewp_bridge_dequeue_default_assets', 0);
+    vitewp_bridge_dequeue_default_assets();
+}
+
+function vitewp_bridge_dequeue_default_assets(): void
+{
+    if (is_admin()) {
+        return;
+    }
+
+    $scripts = [
+        'jquery',
+        'jquery-core',
+        'jquery-migrate',
+        'wp-emoji',
+        'wp-emoji-release',
+    ];
+    $styles = [
+        'wp-emoji-styles',
+        'emoji-styles',
+        'global-styles',
+        'classic-theme-styles',
+        'wp-block-library-theme',
+    ];
+
+    foreach ($scripts as $handle) {
+        wp_dequeue_script($handle);
+    }
+
+    foreach ($styles as $handle) {
+        wp_dequeue_style($handle);
+    }
 }
 
 function vitewp_bridge_setup_hook_context(array $context): void

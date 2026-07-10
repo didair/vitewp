@@ -24,6 +24,7 @@ export interface ViteWpConfig {
     docroot?: string;
     contentDir?: string;
     menus?: Record<string, string>;
+    omitDefaultAssets?: boolean;
     requiredPlugins?: string[];
     pluginPresets?: string[];
     hooks?: {
@@ -75,6 +76,7 @@ export interface LoadedViteWpConfig {
     docroot: string;
     contentDir: string;
     menus: Record<string, string>;
+    omitDefaultAssets: boolean;
     requiredPlugins: string[];
     pluginPresets: string[];
     hooks: {
@@ -161,6 +163,7 @@ export async function loadViteWpConfig(root = process.cwd()): Promise<LoadedVite
       docroot: userConfig.wordpress?.docroot ?? 'wordpress/public',
       contentDir: userConfig.wordpress?.contentDir ?? 'wordpress/content',
       menus: userConfig.wordpress?.menus ?? {},
+      omitDefaultAssets: userConfig.wordpress?.omitDefaultAssets ?? true,
       requiredPlugins: userConfig.wordpress?.requiredPlugins ?? [],
       pluginPresets: userConfig.wordpress?.pluginPresets ?? [],
       hooks: {

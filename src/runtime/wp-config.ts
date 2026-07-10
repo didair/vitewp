@@ -59,6 +59,7 @@ define('VITEWP_ROOT', ${phpString(config.root)});
 define('VITEWP_INTERNAL_SECRET', ${phpString(process.env.VITEWP_INTERNAL_SECRET ?? '')});
 define('VITEWP_ASSETS_MANIFEST', ${phpString(join(config.root, config.blocks.outDir, 'vitewp-manifest.json'))});
 define('VITEWP_MENUS', ${phpString(JSON.stringify(config.wordpress.menus))});
+define('VITEWP_OMIT_DEFAULT_ASSETS', ${config.wordpress.omitDefaultAssets ? 'true' : 'false'});
 
 if (
     (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && str_contains($_SERVER['HTTP_X_FORWARDED_PROTO'], 'https'))
