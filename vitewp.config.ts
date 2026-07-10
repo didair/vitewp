@@ -15,6 +15,10 @@ export default defineConfig({
     url: process.env.WP_URL ?? 'http://localhost:3000',
     docroot: 'wordpress/public',
     contentDir: 'wordpress/content',
+    menus: {
+      primary: 'Primary menu',
+      footer: 'Footer menu',
+    },
   },
   composer: {
     install: true,

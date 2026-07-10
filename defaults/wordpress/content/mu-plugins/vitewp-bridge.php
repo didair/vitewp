@@ -15,6 +15,8 @@ add_filter('pre_option_current_theme', function () {
 add_filter('got_url_rewrite', '__return_true');
 add_filter('got_rewrite', '__return_true');
 
+add_action('after_setup_theme', 'vitewp_bridge_register_nav_menus', 5);
+
 add_action('admin_init', function () {
     $structure = (string) get_option('permalink_structure');
 
@@ -27,6 +29,43 @@ add_action('admin_init', function () {
 function vitewp_bridge_force_theme(): string
 {
     return VITEWP_THEME;
+}
+
+function vitewp_bridge_register_nav_menus(): void
+{
+    $menus = vitewp_bridge_configured_menus();
+
+    if ($menus !== []) {
+        register_nav_menus($menus);
+    }
+}
+
+function vitewp_bridge_configured_menus(): array
+{
+    if (! defined('VITEWP_MENUS')) {
+        return [];
+    }
+
+    $decoded = json_decode((string) VITEWP_MENUS, true);
+
+    if (! is_array($decoded)) {
+        return [];
+    }
+
+    $menus = [];
+
+    foreach ($decoded as $location => $label) {
+        $location = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $location);
+
+        if ($location === '') {
+            continue;
+        }
+
+        $label = wp_strip_all_tags((string) $label);
+        $menus[$location] = $label !== '' ? $label : $location;
+    }
+
+    return $menus;
 }
 
 add_action('init', function () {
@@ -767,6 +806,7 @@ function vitewp_bridge_menus(): array
     }
 
     return [
+        'registeredLocations' => get_registered_nav_menus(),
         'locations' => $locations,
         'menus' => $menus,
     ];

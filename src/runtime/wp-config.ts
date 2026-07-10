@@ -58,6 +58,7 @@ define('WP_CONTENT_URL', WP_HOME . '/wp-content');
 define('VITEWP_ROOT', ${phpString(config.root)});
 define('VITEWP_INTERNAL_SECRET', ${phpString(process.env.VITEWP_INTERNAL_SECRET ?? '')});
 define('VITEWP_ASSETS_MANIFEST', ${phpString(join(config.root, config.blocks.outDir, 'vitewp-manifest.json'))});
+define('VITEWP_MENUS', ${phpString(JSON.stringify(config.wordpress.menus))});
 
 if (
     (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && str_contains($_SERVER['HTTP_X_FORWARDED_PROTO'], 'https'))

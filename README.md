@@ -127,6 +127,29 @@ const menu = await getLiveEntry('menus', { location: 'primary' });
 
 After `npm run dev` or `npm run check`, collection names and filters should have TypeScript completion.
 
+## Menus
+
+Register WordPress menu positions in `vitewp.config.ts`:
+
+```ts
+export default defineConfig({
+  wordpress: {
+    menus: {
+      primary: 'Primary menu',
+      footer: 'Footer menu',
+    },
+  },
+});
+```
+
+Then assign menus to those locations in WordPress admin and fetch them by location:
+
+```ts
+import { getMenuByLocation } from 'vite-wp/wordpress/menus';
+
+const menu = await getMenuByLocation('primary');
+```
+
 ## WordPress hooks in Astro
 
 Astro templates can ask the internal WordPress runtime to render real WordPress actions and filters during SSR:

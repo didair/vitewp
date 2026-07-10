@@ -20,6 +20,7 @@ export interface WpMenu {
 }
 
 export interface WpMenusPayload {
+  registeredLocations: Record<string, string>;
   locations: Record<string, number>;
   menus: WpMenu[];
 }

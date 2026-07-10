@@ -23,6 +23,7 @@ export interface ViteWpConfig {
     url?: string;
     docroot?: string;
     contentDir?: string;
+    menus?: Record<string, string>;
     requiredPlugins?: string[];
     pluginPresets?: string[];
     hooks?: {
@@ -73,6 +74,7 @@ export interface LoadedViteWpConfig {
     url: string;
     docroot: string;
     contentDir: string;
+    menus: Record<string, string>;
     requiredPlugins: string[];
     pluginPresets: string[];
     hooks: {
@@ -158,6 +160,7 @@ export async function loadViteWpConfig(root = process.cwd()): Promise<LoadedVite
       url: userConfig.wordpress?.url ?? 'http://localhost:3000',
       docroot: userConfig.wordpress?.docroot ?? 'wordpress/public',
       contentDir: userConfig.wordpress?.contentDir ?? 'wordpress/content',
+      menus: userConfig.wordpress?.menus ?? {},
       requiredPlugins: userConfig.wordpress?.requiredPlugins ?? [],
       pluginPresets: userConfig.wordpress?.pluginPresets ?? [],
       hooks: {
