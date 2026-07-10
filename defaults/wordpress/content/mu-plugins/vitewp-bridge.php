@@ -142,6 +142,26 @@ add_action('rest_api_init', function () {
         'callback' => 'vitewp_bridge_menus',
     ]);
 
+    register_rest_route('vitewp/v1', '/post', [
+        'methods' => WP_REST_Server::READABLE,
+        'permission_callback' => '__return_true',
+        'args' => [
+            'id' => [
+                'type' => 'integer',
+                'required' => true,
+            ],
+        ],
+        'callback' => function (WP_REST_Request $request) {
+            $post = get_post((int) $request->get_param('id'));
+
+            if (! $post) {
+                return new WP_REST_Response(['message' => 'Post not found'], 404);
+            }
+
+            return vitewp_bridge_post_item($post);
+        },
+    ]);
+
     register_rest_route('vitewp/v1', '/resolve', [
         'methods' => WP_REST_Server::READABLE,
         'permission_callback' => '__return_true',
@@ -853,7 +873,19 @@ function vitewp_bridge_post_item(WP_Post $post): array
         'excerpt' => ['rendered' => apply_filters('the_excerpt', get_the_excerpt($post))],
         'date' => get_post_time(DATE_ATOM, false, $post),
         'modified' => get_post_modified_time(DATE_ATOM, false, $post),
+        'acf' => vitewp_bridge_acf_fields($post),
     ];
+}
+
+function vitewp_bridge_acf_fields(WP_Post $post): array|stdClass
+{
+    if (! function_exists('get_fields')) {
+        return (object) [];
+    }
+
+    $fields = get_fields($post->ID);
+
+    return is_array($fields) && $fields !== [] ? $fields : (object) [];
 }
 
 function vitewp_bridge_menus(): array

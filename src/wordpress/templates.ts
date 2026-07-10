@@ -14,6 +14,7 @@ interface BaseTemplateContext {
   title: string;
   content: string;
   excerpt: string;
+  acf: Record<string, unknown>;
   slug: string;
   postType: string;
   items: WpContentItem[];
@@ -92,9 +93,37 @@ export interface TemplateRuntimeProps {
   toolbarRouteInfo: TemplateRouteInfo | null;
 }
 
-export type PageTemplateProps = PageTemplateContext & TemplateRuntimeProps;
-export type SingleTemplateProps = SingleTemplateContext & TemplateRuntimeProps;
-export type ArchiveTemplateProps = ArchiveTemplateContext & TemplateRuntimeProps;
+export type PageTemplateProps<AdditionalData extends Record<string, unknown> = Record<string, unknown>> =
+  Omit<PageTemplateContext, 'acf' | 'item' | 'route'> & AdditionalData & {
+    item: WpContentItem<'page', AdditionalData>;
+    route: Omit<PageRoute, 'item'> & {
+      item: WpContentItem<'page', AdditionalData>;
+    };
+  } & TemplateRuntimeProps;
+export type SingleTemplateProps<
+  PostType extends string = string,
+  AdditionalData extends Record<string, unknown> = Record<string, unknown>,
+> =
+  Omit<SingleTemplateContext, 'acf' | 'postType' | 'item' | 'route'> & AdditionalData & {
+    postType: PostType;
+    item: WpContentItem<PostType, AdditionalData>;
+    route: Omit<SingleRoute, 'postType' | 'item'> & {
+      postType: PostType;
+      item: WpContentItem<PostType, AdditionalData>;
+    };
+  } & TemplateRuntimeProps;
+export type ArchiveTemplateProps<
+  PostType extends string = string,
+  AdditionalData extends Record<string, unknown> = Record<string, unknown>,
+> =
+  Omit<ArchiveTemplateContext, 'postType' | 'items' | 'route'> & {
+    postType: PostType;
+    items: WpContentItem<PostType, AdditionalData>[];
+    route: Omit<ArchiveRoute, 'postType' | 'items'> & {
+      postType: PostType;
+      items: WpContentItem<PostType, AdditionalData>[];
+    };
+  } & TemplateRuntimeProps;
 export type SearchTemplateProps = SearchTemplateContext & TemplateRuntimeProps;
 export type TaxonomyTemplateProps = TaxonomyTemplateContext & TemplateRuntimeProps;
 export type AnyTemplateProps = TemplateContext & TemplateRuntimeProps;
@@ -125,6 +154,7 @@ export function createTemplateContext(route: WpResolvedRoute, options: TemplateC
         title: route.title,
         content: '',
         excerpt: '',
+        acf: {},
         slug: route.slug,
         postType: route.postType,
         items: route.items,
@@ -141,6 +171,7 @@ export function createTemplateContext(route: WpResolvedRoute, options: TemplateC
         title: route.title,
         content: '',
         excerpt: '',
+        acf: {},
         slug: route.slug,
         postType: route.postType,
         items: route.items,
@@ -158,6 +189,7 @@ export function createTemplateContext(route: WpResolvedRoute, options: TemplateC
         title: route.title,
         content: '',
         excerpt: '',
+        acf: {},
         slug: route.slug,
         postType: route.postType,
         items: route.items,
@@ -179,6 +211,7 @@ export function createTemplateContext(route: WpResolvedRoute, options: TemplateC
         title: route.item.title.rendered,
         content: route.item.content.rendered,
         excerpt: route.item.excerpt?.rendered ?? '',
+        acf: route.item.acf ?? {},
         slug: route.slug,
         postType: route.postType,
         items: [],
@@ -197,6 +230,7 @@ export function createTemplateContext(route: WpResolvedRoute, options: TemplateC
         title: route.item.title.rendered,
         content: route.item.content.rendered,
         excerpt: route.item.excerpt?.rendered ?? '',
+        acf: route.item.acf ?? {},
         slug: route.slug,
         postType: route.postType,
         items: [],

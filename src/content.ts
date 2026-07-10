@@ -3,6 +3,7 @@ import type { LiveLoader as AstroLiveLoader } from 'astro/loaders';
 import { getMenus, type WpMenu } from './wordpress/menus.js';
 import {
   getWordPressApiBase,
+  getWordPressBaseUrl,
   resolveWordPressRoute,
   type WpContentItem,
   type WpResolvedRoute,
@@ -181,9 +182,7 @@ function defaultRestBase(postType: string) {
 }
 
 async function fetchWordPressItemById(restBase: string, id: string | number) {
-  const url = new URL(`${getWordPressApiBase()}/${restBase}/${id}`);
-  url.searchParams.set('_embed', '1');
-  return fetchWordPressJson<WpContentItem>(url, [404]);
+  return fetchBridgePost(id, restBase);
 }
 
 async function fetchWordPressItemBySlug(restBase: string, slug: string) {
@@ -192,7 +191,8 @@ async function fetchWordPressItemBySlug(restBase: string, slug: string) {
   url.searchParams.set('slug', slug);
 
   const { items } = await fetchWordPressList(url);
-  return items[0];
+  const item = items[0];
+  return item ? fetchBridgePost(item.id, restBase) : undefined;
 }
 
 async function fetchWordPressList(url: URL) {
@@ -202,12 +202,24 @@ async function fetchWordPressList(url: URL) {
     throw new Error(`WordPress REST request failed: ${response.status} ${response.statusText}`);
   }
 
-  const items = await response.json() as WpContentItem[];
+  const restItems = await response.json() as WpContentItem[];
+  const items = await Promise.all(restItems.map((item) => fetchBridgePost(item.id).then((bridgeItem) => bridgeItem ?? item)));
   return {
     items,
     total: Number(response.headers.get('x-wp-total') ?? items.length),
     totalPages: Number(response.headers.get('x-wp-totalpages') ?? 1),
   };
+}
+
+async function fetchBridgePost(id: string | number, restBase?: string) {
+  const url = new URL(`${getWordPressBaseUrl()}/wp-json/vitewp/v1/post`);
+  url.searchParams.set('id', String(id));
+
+  if (restBase) {
+    url.searchParams.set('restBase', restBase);
+  }
+
+  return fetchWordPressJson<WpContentItem>(url, [404]);
 }
 
 async function fetchWordPressJson<T>(url: URL, emptyStatuses: number[] = []): Promise<T | undefined> {

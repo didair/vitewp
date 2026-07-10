@@ -2,7 +2,12 @@ export interface WpRenderedField {
   rendered: string;
 }
 
-export interface WpContentItem<PostType extends string = string> {
+export type WpAdditionalData = Record<string, unknown>;
+
+export type WpContentItem<
+  PostType extends string = string,
+  AdditionalData extends WpAdditionalData = WpAdditionalData,
+> = {
   id: number;
   slug: string;
   type: PostType;
@@ -12,7 +17,8 @@ export interface WpContentItem<PostType extends string = string> {
   excerpt?: WpRenderedField;
   date?: string;
   modified?: string;
-}
+  acf: Record<string, unknown>;
+} & AdditionalData;
 
 export interface WpArchivePayload {
   items: WpContentItem[];
@@ -246,8 +252,9 @@ async function resolveViaWordPress(pathname: string) {
 }
 
 async function getById<PostType extends string = string>(restBase: string, id: number) {
-  const url = new URL(`${getWordPressApiBase()}/${restBase}/${id}`);
-  url.searchParams.set('_embed', '1');
+  const url = new URL(`${getWordPressBaseUrl()}/wp-json/vitewp/v1/post`);
+  url.searchParams.set('id', String(id));
+  url.searchParams.set('restBase', restBase);
 
   return getJson<WpContentItem<PostType>>(url);
 }

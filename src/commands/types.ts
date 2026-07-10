@@ -82,7 +82,12 @@ export interface WpRenderedField {
   protected?: boolean;
 }
 
-export interface WpContentItem<PostType extends WpPostType = WpPostType> {
+export type WpAdditionalData = Record<string, unknown>;
+
+export type WpContentItem<
+  PostType extends WpPostType = WpPostType,
+  AdditionalData extends WpAdditionalData = WpAdditionalData,
+> = {
   id: number;
   slug: string;
   type: PostType;
@@ -92,34 +97,45 @@ export interface WpContentItem<PostType extends WpPostType = WpPostType> {
   excerpt?: WpRenderedField;
   date?: string;
   modified?: string;
-}
+  acf: Record<string, unknown>;
+} & AdditionalData;
 
-export interface WpArchiveItem<PostType extends WpPostType = WpPostType> extends WpContentItem<PostType> {}
+export type WpArchiveItem<
+  PostType extends WpPostType = WpPostType,
+  AdditionalData extends WpAdditionalData = WpAdditionalData,
+> = WpContentItem<PostType, AdditionalData>;
 
-export type WpPageTemplateProps = Omit<BasePageTemplateProps, 'item' | 'route'> & {
-  item: WpContentItem<'page'>;
+export type WpPageTemplateProps<AdditionalData extends WpAdditionalData = WpAdditionalData> =
+  Omit<BasePageTemplateProps, 'acf' | 'item' | 'route'> & AdditionalData & {
+  item: WpContentItem<'page', AdditionalData>;
   route: Omit<BasePageTemplateProps['route'], 'item'> & {
-    item: WpContentItem<'page'>;
+    item: WpContentItem<'page', AdditionalData>;
   };
 };
 
-export type WpSingleTemplateProps<PostType extends WpPostType = WpPostType> =
-  Omit<BaseSingleTemplateProps, 'postType' | 'item' | 'route'> & {
+export type WpSingleTemplateProps<
+  PostType extends WpPostType = WpPostType,
+  AdditionalData extends WpAdditionalData = WpAdditionalData,
+> =
+  Omit<BaseSingleTemplateProps, 'acf' | 'postType' | 'item' | 'route'> & AdditionalData & {
     postType: PostType;
-    item: WpContentItem<PostType>;
+    item: WpContentItem<PostType, AdditionalData>;
     route: Omit<BaseSingleTemplateProps['route'], 'postType' | 'item'> & {
       postType: PostType;
-      item: WpContentItem<PostType>;
+      item: WpContentItem<PostType, AdditionalData>;
     };
   };
 
-export type WpArchiveTemplateProps<PostType extends WpPostType = WpPostType> =
+export type WpArchiveTemplateProps<
+  PostType extends WpPostType = WpPostType,
+  AdditionalData extends WpAdditionalData = WpAdditionalData,
+> =
   Omit<BaseArchiveTemplateProps, 'postType' | 'items' | 'route'> & {
     postType: PostType;
-    items: WpArchiveItem<PostType>[];
+    items: WpArchiveItem<PostType, AdditionalData>[];
     route: Omit<BaseArchiveTemplateProps['route'], 'postType' | 'items'> & {
       postType: PostType;
-      items: WpArchiveItem<PostType>[];
+      items: WpArchiveItem<PostType, AdditionalData>[];
     };
   };
 
