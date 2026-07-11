@@ -19,6 +19,10 @@
       "types": "./dist/content.d.ts",
       "import": "./dist/content.js"
     },
+    "./woocommerce": {
+      "types": "./dist/woocommerce.d.ts",
+      "import": "./dist/woocommerce.js"
+    },
     "./wordpress": {
       "types": "./dist/wordpress/index.d.ts",
       "import": "./dist/wordpress/index.js"

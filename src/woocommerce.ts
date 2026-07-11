@@ -1,0 +1,236 @@
+import { getWordPressBaseUrl } from './wordpress/client.js';
+
+type QueryValue = string | number | boolean | Array<string | number | boolean> | undefined | null;
+
+export interface WooQuery {
+  page?: number;
+  perPage?: number;
+  search?: string;
+  slug?: string;
+  order?: 'asc' | 'desc';
+  orderby?: string;
+  category?: string | number | Array<string | number>;
+  tag?: string | number | Array<string | number>;
+  brand?: string | number | Array<string | number>;
+  include?: Array<string | number>;
+  exclude?: Array<string | number>;
+  [key: string]: QueryValue;
+}
+
+export interface WooCollection<T> {
+  items: T[];
+  page: number;
+  perPage: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface WooProductImage {
+  id: number;
+  src: string;
+  thumbnail?: string;
+  srcset?: string;
+  sizes?: string;
+  name?: string;
+  alt?: string;
+}
+
+export interface WooProductTerm {
+  id: number;
+  name: string;
+  slug: string;
+  link?: string;
+}
+
+export interface WooProductAttribute {
+  id: number;
+  name: string;
+  taxonomy?: string;
+  has_variations?: boolean;
+  terms?: WooProductTerm[];
+}
+
+export interface WooProductPrices {
+  currency_code: string;
+  currency_symbol: string;
+  currency_minor_unit: number;
+  currency_decimal_separator: string;
+  currency_thousand_separator: string;
+  currency_prefix: string;
+  currency_suffix: string;
+  price: string;
+  regular_price: string;
+  sale_price: string;
+  price_range?: {
+    min_amount: string;
+    max_amount: string;
+  } | null;
+}
+
+export interface WooProduct {
+  id: number;
+  name: string;
+  slug: string;
+  permalink: string;
+  type: string;
+  description: string;
+  short_description: string;
+  sku: string;
+  prices: WooProductPrices;
+  price_html: string;
+  average_rating: string;
+  review_count: number;
+  images: WooProductImage[];
+  categories: WooProductTerm[];
+  tags: WooProductTerm[];
+  attributes: WooProductAttribute[];
+  variations?: number[];
+  is_in_stock: boolean;
+  is_purchasable: boolean;
+  is_on_sale: boolean;
+  add_to_cart?: {
+    text: string;
+    description: string;
+    url: string;
+    minimum: number;
+    maximum: number;
+    multiple_of: number;
+  };
+}
+
+export interface WooAttribute {
+  id: number;
+  name: string;
+  taxonomy: string;
+  type: string;
+  order: string;
+  has_archives: boolean;
+}
+
+export interface WooReview {
+  id: number;
+  date_created: string;
+  formatted_date_created: string;
+  product_id: number;
+  product_name: string;
+  product_permalink: string;
+  reviewer: string;
+  review: string;
+  rating: number;
+  verified: boolean;
+  reviewer_avatar_urls: Record<string, string>;
+}
+
+export interface WooReviewQuery {
+  productId?: number;
+  page?: number;
+  perPage?: number;
+  [key: string]: QueryValue;
+}
+
+export async function getProducts(query: WooQuery = {}): Promise<WooProduct[]> {
+  return getProductCollection(query).then((collection) => collection.items);
+}
+
+export async function getProductCollection(query: WooQuery = {}): Promise<WooCollection<WooProduct>> {
+  return getStoreCollection<WooProduct>('products', query);
+}
+
+export async function getProduct(id: number): Promise<WooProduct> {
+  return getStoreJson<WooProduct>(`products/${id}`);
+}
+
+export async function getProductBySlug(slug: string): Promise<WooProduct | null> {
+  const products = await getProducts({ slug, perPage: 1 });
+  return products[0] ?? null;
+}
+
+export async function getProductCategories(query: WooQuery = {}): Promise<WooProductTerm[]> {
+  return getStoreJson<WooProductTerm[]>('products/categories', query);
+}
+
+export async function getProductTags(query: WooQuery = {}): Promise<WooProductTerm[]> {
+  return getStoreJson<WooProductTerm[]>('products/tags', query);
+}
+
+export async function getProductBrands(query: WooQuery = {}): Promise<WooProductTerm[]> {
+  return getStoreJson<WooProductTerm[]>('products/brands', query, [404]);
+}
+
+export async function getProductAttributes(query: WooQuery = {}): Promise<WooAttribute[]> {
+  return getStoreJson<WooAttribute[]>('products/attributes', query);
+}
+
+export async function getProductAttributeTerms(attributeId: number, query: WooQuery = {}): Promise<WooProductTerm[]> {
+  return getStoreJson<WooProductTerm[]>(`products/attributes/${attributeId}/terms`, query);
+}
+
+export async function getProductReviews(query: WooReviewQuery = {}): Promise<WooReview[]> {
+  const params = { ...query };
+
+  if (query.productId !== undefined) {
+    params.product_id = query.productId;
+    delete params.productId;
+  }
+
+  return getStoreJson<WooReview[]>('products/reviews', params);
+}
+
+export function getWooCommerceStoreApiBase() {
+  return `${getWordPressBaseUrl()}/wp-json/wc/store/v1`;
+}
+
+async function getStoreCollection<T>(path: string, query: Record<string, QueryValue>): Promise<WooCollection<T>> {
+  const { response, data } = await fetchStoreJson<T[]>(path, query);
+  const page = Number(query.page ?? 1);
+  const perPage = Number(query.perPage ?? query.per_page ?? data.length);
+
+  return {
+    items: data,
+    page,
+    perPage,
+    total: Number(response.headers.get('x-wp-total') ?? data.length),
+    totalPages: Number(response.headers.get('x-wp-totalpages') ?? 1),
+  };
+}
+
+async function getStoreJson<T>(path: string, query: Record<string, QueryValue> = {}, emptyStatuses: number[] = []): Promise<T> {
+  const { data } = await fetchStoreJson<T>(path, query, emptyStatuses);
+  return data;
+}
+
+async function fetchStoreJson<T>(path: string, query: Record<string, QueryValue> = {}, emptyStatuses: number[] = []) {
+  const url = storeUrl(path, query);
+  const response = await fetch(url);
+
+  if (emptyStatuses.includes(response.status)) {
+    return { response, data: [] as T };
+  }
+
+  if (!response.ok) {
+    throw new Error(`WooCommerce Store API request failed: ${response.status} ${response.statusText}`);
+  }
+
+  return {
+    response,
+    data: await response.json() as T,
+  };
+}
+
+function storeUrl(path: string, query: Record<string, QueryValue>) {
+  const url = new URL(`${getWooCommerceStoreApiBase()}/${path.replace(/^\/+/, '')}`);
+
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined || value === null) continue;
+
+    const param = key === 'perPage' ? 'per_page' : key;
+
+    if (Array.isArray(value)) {
+      url.searchParams.set(param, value.join(','));
+    } else {
+      url.searchParams.set(param, String(value));
+    }
+  }
+
+  return url;
+}

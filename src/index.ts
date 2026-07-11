@@ -1,6 +1,31 @@
 export { defineConfig } from './config.js';
 export type { ViteWpConfig, LoadedViteWpConfig } from './config.js';
 export { wpMenuLoader, wpPostTypeLoader, wpRouteLoader } from './content.js';
+export {
+  getProduct,
+  getProductAttributeTerms,
+  getProductAttributes,
+  getProductBrands,
+  getProductBySlug,
+  getProductCategories,
+  getProductCollection,
+  getProductReviews,
+  getProducts,
+  getProductTags,
+  getWooCommerceStoreApiBase,
+} from './woocommerce.js';
+export type {
+  WooAttribute,
+  WooCollection,
+  WooProduct,
+  WooProductAttribute,
+  WooProductImage,
+  WooProductPrices,
+  WooProductTerm,
+  WooQuery,
+  WooReview,
+  WooReviewQuery,
+} from './woocommerce.js';
 export type {
   LiveCacheHint,
   LiveCollection,
