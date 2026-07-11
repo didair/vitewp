@@ -40,7 +40,15 @@ export interface WooProductTerm {
   name: string;
   slug: string;
   link?: string;
+  permalink?: string;
+  parent?: number;
+  count?: number;
+  description?: string;
+  image?: WooProductImage | null;
+  review_count?: number;
 }
+
+export type WooProductBrand = WooProductTerm;
 
 export interface WooProductAttribute {
   id: number;
@@ -48,6 +56,16 @@ export interface WooProductAttribute {
   taxonomy?: string;
   has_variations?: boolean;
   terms?: WooProductTerm[];
+}
+
+export interface WooProductVariationAttribute {
+  name: string;
+  value: string;
+}
+
+export interface WooProductVariation {
+  id: number;
+  attributes: WooProductVariationAttribute[];
 }
 
 export interface WooProductPrices {
@@ -70,12 +88,15 @@ export interface WooProductPrices {
 export interface WooProduct {
   id: number;
   name: string;
+  parent: number;
   slug: string;
   permalink: string;
   type: string;
+  variation: string;
   description: string;
   short_description: string;
   sku: string;
+  on_sale: boolean;
   prices: WooProductPrices;
   price_html: string;
   average_rating: string;
@@ -83,11 +104,15 @@ export interface WooProduct {
   images: WooProductImage[];
   categories: WooProductTerm[];
   tags: WooProductTerm[];
+  brands: WooProductTerm[];
   attributes: WooProductAttribute[];
-  variations?: number[];
+  variations: WooProductVariation[];
+  has_options: boolean;
   is_in_stock: boolean;
   is_purchasable: boolean;
-  is_on_sale: boolean;
+  is_on_backorder: boolean;
+  low_stock_remaining: number | null;
+  sold_individually: boolean;
   add_to_cart?: {
     text: string;
     description: string;
@@ -96,6 +121,7 @@ export interface WooProduct {
     maximum: number;
     multiple_of: number;
   };
+  extensions: Record<string, unknown>;
 }
 
 export interface WooAttribute {
