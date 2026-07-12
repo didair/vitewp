@@ -863,6 +863,8 @@ function vitewp_bridge_archive(WP_REST_Request $request): array
 
 function vitewp_bridge_post_item(WP_Post $post): array
 {
+    $featured_media = vitewp_bridge_featured_media($post);
+
     return [
         'id' => $post->ID,
         'slug' => $post->post_name,
@@ -876,6 +878,61 @@ function vitewp_bridge_post_item(WP_Post $post): array
         'acf' => vitewp_bridge_acf_fields($post),
         'taxonomies' => vitewp_bridge_post_taxonomy_ids($post),
         'terms' => vitewp_bridge_post_terms($post),
+        'featuredMediaId' => (int) get_post_thumbnail_id($post),
+        'featuredMedia' => $featured_media,
+    ];
+}
+
+function vitewp_bridge_featured_media(WP_Post $post): ?array
+{
+    $attachment_id = (int) get_post_thumbnail_id($post);
+
+    if ($attachment_id <= 0) {
+        return null;
+    }
+
+    return vitewp_bridge_media_item($attachment_id);
+}
+
+function vitewp_bridge_media_item(int $attachment_id): ?array
+{
+    $attachment = get_post($attachment_id);
+
+    if (! $attachment instanceof WP_Post || $attachment->post_type !== 'attachment') {
+        return null;
+    }
+
+    $metadata = wp_get_attachment_metadata($attachment_id);
+    $sizes = [];
+
+    if (is_array($metadata) && isset($metadata['sizes']) && is_array($metadata['sizes'])) {
+        foreach ($metadata['sizes'] as $name => $size) {
+            if (! is_array($size)) {
+                continue;
+            }
+
+            $sizes[$name] = [
+                'file' => (string) ($size['file'] ?? ''),
+                'width' => (int) ($size['width'] ?? 0),
+                'height' => (int) ($size['height'] ?? 0),
+                'mimeType' => (string) ($size['mime-type'] ?? ''),
+                'url' => wp_get_attachment_image_url($attachment_id, $name) ?: '',
+            ];
+        }
+    }
+
+    return [
+        'id' => $attachment_id,
+        'url' => wp_get_attachment_url($attachment_id) ?: '',
+        'alt' => (string) get_post_meta($attachment_id, '_wp_attachment_image_alt', true),
+        'caption' => wp_get_attachment_caption($attachment_id) ?: '',
+        'title' => get_the_title($attachment_id),
+        'description' => $attachment->post_content,
+        'mimeType' => get_post_mime_type($attachment_id) ?: '',
+        'mediaType' => wp_attachment_is_image($attachment_id) ? 'image' : 'file',
+        'width' => is_array($metadata) && isset($metadata['width']) ? (int) $metadata['width'] : null,
+        'height' => is_array($metadata) && isset($metadata['height']) ? (int) $metadata['height'] : null,
+        'sizes' => $sizes !== [] ? $sizes : (object) [],
     ];
 }
 

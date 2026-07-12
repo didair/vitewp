@@ -100,6 +100,36 @@ export interface WpTerm<Taxonomy extends WpTaxonomy = WpTaxonomy> {
   count: number;
 }
 
+export interface WpMediaSize {
+  file: string;
+  width: number;
+  height: number;
+  mimeType: string;
+  url: string;
+}
+
+export interface WpMediaItem {
+  id: number;
+  url: string;
+  alt: string;
+  caption: string;
+  title: string;
+  description: string;
+  mimeType: string;
+  mediaType: 'image' | 'file' | string;
+  width: number | null;
+  height: number | null;
+  sizes: Record<string, WpMediaSize>;
+}
+
+export type WpTaxonomyIdMap<PostType extends WpPostType = WpPostType> = {
+  [Taxonomy in WpTaxonomiesByPostType[PostType]]?: number[];
+};
+
+export type WpTermMap<PostType extends WpPostType = WpPostType> = {
+  [Taxonomy in WpTaxonomiesByPostType[PostType]]?: WpTerm<Taxonomy>[];
+};
+
 export type WpContentItem<
   PostType extends WpPostType = WpPostType,
   AdditionalData extends WpAdditionalData = WpAdditionalData,
@@ -114,8 +144,10 @@ export type WpContentItem<
   date?: string;
   modified?: string;
   acf: Record<string, unknown>;
-  taxonomies: Partial<Record<WpTaxonomiesByPostType[PostType], number[]>>;
-  terms: Partial<Record<WpTaxonomiesByPostType[PostType], WpTerm<WpTaxonomiesByPostType[PostType]>[]>>;
+  taxonomies: WpTaxonomyIdMap<PostType>;
+  terms: WpTermMap<PostType>;
+  featuredMediaId: number;
+  featuredMedia: WpMediaItem | null;
 } & AdditionalData;
 
 export type WpArchiveItem<

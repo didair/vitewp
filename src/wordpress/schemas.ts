@@ -5,6 +5,28 @@ export const wpRenderedFieldSchema = z.looseObject({
   protected: z.boolean().optional(),
 });
 
+export const wpMediaSizeSchema = z.looseObject({
+  file: z.string(),
+  width: z.number(),
+  height: z.number(),
+  mimeType: z.string(),
+  url: z.string(),
+});
+
+export const wpMediaItemSchema = z.looseObject({
+  id: z.number(),
+  url: z.string(),
+  alt: z.string(),
+  caption: z.string(),
+  title: z.string(),
+  description: z.string(),
+  mimeType: z.string(),
+  mediaType: z.string(),
+  width: z.number().nullable(),
+  height: z.number().nullable(),
+  sizes: z.record(z.string(), wpMediaSizeSchema),
+});
+
 export const wpContentItemSchema = z.looseObject({
   id: z.number(),
   slug: z.string(),
@@ -28,6 +50,8 @@ export const wpContentItemSchema = z.looseObject({
     parent: z.number(),
     count: z.number(),
   }))).optional(),
+  featuredMediaId: z.number().optional(),
+  featuredMedia: wpMediaItemSchema.nullable().optional(),
 });
 
 export const wpResolvedRouteSchema = z.looseObject({

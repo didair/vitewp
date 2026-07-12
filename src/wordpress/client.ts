@@ -16,6 +16,28 @@ export interface WpTerm<Taxonomy extends string = string> {
   count: number;
 }
 
+export interface WpMediaSize {
+  file: string;
+  width: number;
+  height: number;
+  mimeType: string;
+  url: string;
+}
+
+export interface WpMediaItem {
+  id: number;
+  url: string;
+  alt: string;
+  caption: string;
+  title: string;
+  description: string;
+  mimeType: string;
+  mediaType: 'image' | 'file' | string;
+  width: number | null;
+  height: number | null;
+  sizes: Record<string, WpMediaSize>;
+}
+
 export type WpContentItem<
   PostType extends string = string,
   AdditionalData extends WpAdditionalData = WpAdditionalData,
@@ -32,6 +54,8 @@ export type WpContentItem<
   acf: Record<string, unknown>;
   taxonomies: Record<string, number[]>;
   terms: Record<string, WpTerm[]>;
+  featuredMediaId: number;
+  featuredMedia: WpMediaItem | null;
 } & AdditionalData;
 
 export interface WpArchivePayload {
