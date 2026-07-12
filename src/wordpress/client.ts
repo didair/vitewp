@@ -4,6 +4,18 @@ export interface WpRenderedField {
 
 export type WpAdditionalData = Record<string, unknown>;
 
+export interface WpTerm<Taxonomy extends string = string> {
+  id: number;
+  termId: number;
+  taxonomy: Taxonomy;
+  slug: string;
+  name: string;
+  description: string;
+  link: string;
+  parent: number;
+  count: number;
+}
+
 export type WpContentItem<
   PostType extends string = string,
   AdditionalData extends WpAdditionalData = WpAdditionalData,
@@ -18,6 +30,8 @@ export type WpContentItem<
   date?: string;
   modified?: string;
   acf: Record<string, unknown>;
+  taxonomies: Record<string, number[]>;
+  terms: Record<string, WpTerm[]>;
 } & AdditionalData;
 
 export interface WpArchivePayload {

@@ -874,6 +874,8 @@ function vitewp_bridge_post_item(WP_Post $post): array
         'date' => get_post_time(DATE_ATOM, false, $post),
         'modified' => get_post_modified_time(DATE_ATOM, false, $post),
         'acf' => vitewp_bridge_acf_fields($post),
+        'taxonomies' => vitewp_bridge_post_taxonomy_ids($post),
+        'terms' => vitewp_bridge_post_terms($post),
     ];
 }
 
@@ -886,6 +888,67 @@ function vitewp_bridge_acf_fields(WP_Post $post): array|stdClass
     $fields = get_fields($post->ID);
 
     return is_array($fields) && $fields !== [] ? $fields : (object) [];
+}
+
+function vitewp_bridge_post_taxonomy_ids(WP_Post $post): array
+{
+    $taxonomies = [];
+
+    foreach (vitewp_bridge_post_taxonomy_objects($post) as $taxonomy) {
+        $terms = get_the_terms($post, $taxonomy->name);
+
+        if (! is_array($terms)) {
+            $taxonomies[$taxonomy->name] = [];
+            continue;
+        }
+
+        $taxonomies[$taxonomy->name] = array_map(
+            fn (WP_Term $term): int => (int) $term->term_id,
+            array_values($terms),
+        );
+    }
+
+    return $taxonomies;
+}
+
+function vitewp_bridge_post_terms(WP_Post $post): array
+{
+    $taxonomies = [];
+
+    foreach (vitewp_bridge_post_taxonomy_objects($post) as $taxonomy) {
+        $terms = get_the_terms($post, $taxonomy->name);
+
+        if (! is_array($terms)) {
+            $taxonomies[$taxonomy->name] = [];
+            continue;
+        }
+
+        $taxonomies[$taxonomy->name] = array_map('vitewp_bridge_term_item', array_values($terms));
+    }
+
+    return $taxonomies;
+}
+
+function vitewp_bridge_post_taxonomy_objects(WP_Post $post): array
+{
+    return array_values(get_object_taxonomies($post->post_type, 'objects'));
+}
+
+function vitewp_bridge_term_item(WP_Term $term): array
+{
+    $link = get_term_link($term);
+
+    return [
+        'id' => (int) $term->term_id,
+        'termId' => (int) $term->term_id,
+        'taxonomy' => $term->taxonomy,
+        'slug' => $term->slug,
+        'name' => $term->name,
+        'description' => $term->description,
+        'link' => is_wp_error($link) ? '' : $link,
+        'parent' => (int) $term->parent,
+        'count' => (int) $term->count,
+    ];
 }
 
 function vitewp_bridge_menus(): array

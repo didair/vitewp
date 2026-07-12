@@ -15,6 +15,19 @@ export const wpContentItemSchema = z.looseObject({
   excerpt: wpRenderedFieldSchema.optional(),
   date: z.string().optional(),
   modified: z.string().optional(),
+  acf: z.record(z.string(), z.unknown()).optional(),
+  taxonomies: z.record(z.string(), z.array(z.number())).optional(),
+  terms: z.record(z.string(), z.array(z.looseObject({
+    id: z.number(),
+    termId: z.number(),
+    taxonomy: z.string(),
+    slug: z.string(),
+    name: z.string(),
+    description: z.string(),
+    link: z.string(),
+    parent: z.number(),
+    count: z.number(),
+  }))).optional(),
 });
 
 export const wpResolvedRouteSchema = z.looseObject({
