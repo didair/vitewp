@@ -1,5 +1,5 @@
 ---
-import type { LayoutTemplateProps as Props } from 'vite-wp/wordpress/templates';
+import type { LayoutTemplateProps as Props } from 'wp-types';
 
 const { title = 'ViteWP', toolbarRouteInfo = null } = Astro.props;
 const pageTitle = title ? `${String(title).replace(/<[^>]+>/g, '')} · ViteWP` : 'ViteWP';

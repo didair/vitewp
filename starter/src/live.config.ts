@@ -1,6 +1,6 @@
 import { defineLiveCollection } from 'astro/content/config';
-import { wpMenuLoader, wpPostTypeLoader, wpRouteLoader } from 'vite-wp/content';
-import { wpContentItemSchema, wpMenuSchema, wpResolvedRouteSchema } from 'vite-wp/wordpress/schemas';
+import { wpMenuLoader, wpPostTypeLoader, wpRouteLoader } from 'vite-wp/wordpress';
+import { wpContentItemSchema, wpMenuSchema, wpResolvedRouteSchema } from 'vite-wp/wordpress';
 
 export const collections = {
   routes: defineLiveCollection({

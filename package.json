@@ -15,10 +15,6 @@
       "types": "./dist/astro.d.ts",
       "import": "./dist/astro.js"
     },
-    "./content": {
-      "types": "./dist/content.d.ts",
-      "import": "./dist/content.js"
-    },
     "./woocommerce": {
       "types": "./dist/woocommerce.d.ts",
       "import": "./dist/woocommerce.js"
@@ -26,30 +22,6 @@
     "./wordpress": {
       "types": "./dist/wordpress/index.d.ts",
       "import": "./dist/wordpress/index.js"
-    },
-    "./wordpress/client": {
-      "types": "./dist/wordpress/client.d.ts",
-      "import": "./dist/wordpress/client.js"
-    },
-    "./wordpress/menus": {
-      "types": "./dist/wordpress/menus.d.ts",
-      "import": "./dist/wordpress/menus.js"
-    },
-    "./wordpress/hooks": {
-      "types": "./dist/wordpress/hooks.d.ts",
-      "import": "./dist/wordpress/hooks.js"
-    },
-    "./wordpress/blocks": {
-      "types": "./dist/wordpress/blocks.d.ts",
-      "import": "./dist/wordpress/blocks.js"
-    },
-    "./wordpress/templates": {
-      "types": "./dist/wordpress/templates.d.ts",
-      "import": "./dist/wordpress/templates.js"
-    },
-    "./wordpress/schemas": {
-      "types": "./dist/wordpress/schemas.d.ts",
-      "import": "./dist/wordpress/schemas.js"
     }
   },
   "scripts": {

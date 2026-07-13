@@ -145,7 +145,7 @@ export default defineConfig({
 Then assign menus to those locations in WordPress admin and fetch them by location:
 
 ```ts
-import { getMenuByLocation } from 'vite-wp/wordpress/menus';
+import { getMenuByLocation } from 'vite-wp/wordpress';
 
 const menu = await getMenuByLocation('primary');
 ```
@@ -156,7 +156,7 @@ Astro templates can ask the internal WordPress runtime to render real WordPress 
 
 ```astro
 ---
-import { createHooks } from 'vite-wp/wordpress/hooks';
+import { createHooks } from 'vite-wp/wordpress';
 
 const hooks = createHooks(Astro.props);
 const head = await hooks.action('wp_head');

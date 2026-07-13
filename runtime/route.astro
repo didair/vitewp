@@ -2,8 +2,8 @@
 export const prerender = false;
 
 import { getLiveEntry } from 'astro:content';
-import type { WpResolvedRoute } from 'vite-wp/wordpress';
-import { createTemplateContext, templateCandidates } from 'vite-wp/wordpress/templates';
+import { createTemplateContext, templateCandidates } from 'vite-wp/wordpress';
+import type { WpResolvedRoute } from 'wp-types';
 
 type TemplateModule = {
   default: unknown;
