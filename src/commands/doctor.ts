@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import { loadViteWpConfig, type LoadedViteWpConfig } from '../config.js';
 
 const execFileAsync = promisify(execFile);
+const MINIMUM_PHP_VERSION = '8.3.0';
 
 type CheckStatus = 'pass' | 'warn' | 'fail';
 
@@ -32,6 +33,7 @@ export async function runDoctorChecks(config: LoadedViteWpConfig, options: { liv
 
   checks.push(fileCheck(config.root, 'astro.config.mjs', 'Astro config'));
   checks.push(fileCheck(config.root, 'composer.json', 'Composer manifest'));
+  checks.push(composerPhpRequirementCheck(config.root));
   checks.push(composerWordPressCheck(config.root, config.composer.wordpressPackage));
   checks.push(composerInstallDirCheck(config));
   checks.push(fileCheck(config.root, 'composer.lock', 'Composer lockfile'));
@@ -44,7 +46,7 @@ export async function runDoctorChecks(config: LoadedViteWpConfig, options: { liv
   checks.push(templateDirectoryCheck(config));
   checks.push(databaseConfigCheck(config));
 
-  checks.push(await commandCheck('php', ['-v'], 'PHP runtime'));
+  checks.push(await phpRuntimeCheck());
   checks.push(await commandCheck('composer', ['--version'], 'Composer'));
 
   checks.push(gitignoreCheck(config.root, config.wordpress.docroot));
@@ -95,6 +97,48 @@ async function commandCheck(command: string, args: string[], label: string): Pro
   }
 }
 
+async function phpRuntimeCheck(): Promise<Check> {
+  try {
+    const { stdout, stderr } = await execFileAsync('php', ['-r', 'echo PHP_VERSION;']);
+    const version = `${stdout}${stderr}`.trim();
+
+    if (compareVersions(version, MINIMUM_PHP_VERSION) < 0) {
+      return {
+        status: 'fail',
+        label: 'PHP runtime',
+        detail: `PHP ${version} found; ViteWP requires PHP ${MINIMUM_PHP_VERSION} or newer.`,
+      };
+    }
+
+    return {
+      status: 'pass',
+      label: 'PHP runtime',
+      detail: `PHP ${version}`,
+    };
+  } catch {
+    return { status: 'fail', label: 'PHP runtime', detail: 'php was not found on PATH.' };
+  }
+}
+
+function compareVersions(a: string, b: string) {
+  const left = versionParts(a);
+  const right = versionParts(b);
+
+  for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
+    const leftPart = left[index] ?? 0;
+    const rightPart = right[index] ?? 0;
+
+    if (leftPart > rightPart) return 1;
+    if (leftPart < rightPart) return -1;
+  }
+
+  return 0;
+}
+
+function versionParts(version: string) {
+  return version.split(/[.-]/).map((part) => Number.parseInt(part, 10) || 0);
+}
+
 function databaseConfigCheck(config: LoadedViteWpConfig): Check {
   const database = config.database;
   const missing = [
@@ -125,6 +169,85 @@ function databaseConfigCheck(config: LoadedViteWpConfig): Check {
     label: 'Database config',
     detail: `${database.driver}://${database.user}@${database.host}:${database.port}/${database.name} (${database.tablePrefix})`,
   };
+}
+
+function composerPhpRequirementCheck(root: string): Check {
+  const composerPath = join(root, 'composer.json');
+
+  if (!existsSync(composerPath)) {
+    return {
+      status: 'warn',
+      label: 'Composer PHP requirement',
+      detail: 'composer.json does not exist yet.',
+    };
+  }
+
+  try {
+    const composer = JSON.parse(readFileSync(composerPath, 'utf8')) as {
+      require?: Record<string, string>;
+    };
+    const requirement = composer.require?.php;
+
+    if (!requirement) {
+      return {
+        status: 'fail',
+        label: 'Composer PHP requirement',
+        detail: `Add "php": ">=${MINIMUM_PHP_VERSION.replace(/\.0$/, '')}" to composer.json.`,
+      };
+    }
+
+    const minimum = minimumPhpFromConstraint(requirement);
+
+    if (!minimum) {
+      return {
+        status: 'warn',
+        label: 'Composer PHP requirement',
+        detail: `Could not verify "${requirement}"; ViteWP expects PHP ${MINIMUM_PHP_VERSION} or newer.`,
+      };
+    }
+
+    if (compareVersions(minimum, MINIMUM_PHP_VERSION) < 0) {
+      return {
+        status: 'fail',
+        label: 'Composer PHP requirement',
+        detail: `"${requirement}" allows PHP ${minimum}; ViteWP requires PHP ${MINIMUM_PHP_VERSION} or newer.`,
+      };
+    }
+
+    return {
+      status: 'pass',
+      label: 'Composer PHP requirement',
+      detail: requirement,
+    };
+  } catch (error) {
+    return {
+      status: 'fail',
+      label: 'Composer PHP requirement',
+      detail: error instanceof Error ? error.message : 'Could not parse composer.json.',
+    };
+  }
+}
+
+function minimumPhpFromConstraint(requirement: string) {
+  const candidates = requirement
+    .split('||')
+    .map((part) => part.trim().match(/(?:>=|\^|~)?\s*(\d+(?:\.\d+){0,2})/)?.[1])
+    .filter((version): version is string => Boolean(version))
+    .map(normalizeVersion);
+
+  if (candidates.length === 0) return null;
+
+  return candidates.sort(compareVersions)[0];
+}
+
+function normalizeVersion(version: string) {
+  const parts = version.split('.');
+
+  while (parts.length < 3) {
+    parts.push('0');
+  }
+
+  return parts.slice(0, 3).join('.');
 }
 
 function composerWordPressCheck(root: string, wordpressPackage: string): Check {
@@ -359,6 +482,14 @@ async function wordpressHealthCheck(config: LoadedViteWpConfig): Promise<Check> 
     const missingPlugins = expectedPlugins.filter((plugin) => {
       return !health.activePlugins?.some((active) => active === plugin || active.startsWith(`${plugin}/`));
     });
+
+    if (health.phpVersion && compareVersions(health.phpVersion, MINIMUM_PHP_VERSION) < 0) {
+      return {
+        status: 'fail',
+        label: 'WordPress health endpoint',
+        detail: `WordPress is running PHP ${health.phpVersion}; ViteWP requires PHP ${MINIMUM_PHP_VERSION} or newer.`,
+      };
+    }
 
     if (missingPlugins.length > 0) {
       return {

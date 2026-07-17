@@ -122,7 +122,7 @@ function ensureDefaultContentFiles(contentDir: string) {
     join(packageContentDir, 'mu-plugins/vitewp-bridge.php'),
     join(contentDir, 'mu-plugins/vitewp-bridge.php'),
   );
-  copyIfMissing(join(packageContentDir, 'themes/vitewp'), join(contentDir, 'themes/vitewp'));
+  copyPackageDirectory(join(packageContentDir, 'themes/vitewp'), join(contentDir, 'themes/vitewp'));
 }
 
 function copyPackageFile(source: string, destination: string) {
@@ -132,9 +132,9 @@ function copyPackageFile(source: string, destination: string) {
   cpSync(source, destination);
 }
 
-function copyIfMissing(source: string, destination: string) {
-  if (existsSync(destination) || !existsSync(source)) return;
+function copyPackageDirectory(source: string, destination: string) {
+  if (!existsSync(source)) return;
 
   mkdirSync(dirname(destination), { recursive: true });
-  cpSync(source, destination, { recursive: true });
+  cpSync(source, destination, { recursive: true, force: true });
 }

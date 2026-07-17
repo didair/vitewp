@@ -12,6 +12,7 @@ const pageHref = (nextPage: number) => {
   return `${path}${query}`;
 };
 ---
+
 {totalPages > 1 && (
   <nav aria-label="Pagination" style="display: flex; gap: 12px; margin-top: 32px;">
     {page > 1 && <a href={pageHref(page - 1)}>Previous</a>}

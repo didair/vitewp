@@ -7,7 +7,7 @@ One entrypoint for everything you need, no fuzz and no magic.
 ## Requirements
 
 - Node.js 20+
-- PHP 8.2+
+- PHP 8.3+
 - Composer
 - a MySQL or MariaDB server
 
