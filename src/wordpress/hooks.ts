@@ -1,4 +1,5 @@
 import type { TemplateContext } from './templates.js';
+import { getOptionalRequestContext } from './context.js';
 
 export interface HookRenderResult {
   hook: string;
@@ -145,6 +146,12 @@ function hookRequestHeaders(secret: string) {
     'content-type': 'application/json',
     'x-vitewp-internal-secret': secret,
   };
+  const context = getOptionalRequestContext();
+
+  if (context?.cookie) {
+    headers.cookie = context.cookie;
+  }
+
   const publicUrl = process.env.VITEWP_PUBLIC_URL;
 
   if (publicUrl) {

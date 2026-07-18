@@ -1,5 +1,7 @@
 export * from './client.js';
+export * from './auth.js';
 export * from './blocks.js';
+export * from './context.js';
 export * from './hooks.js';
 export * from './menus.js';
 export * from './schemas.js';

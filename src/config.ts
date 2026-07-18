@@ -27,6 +27,9 @@ export interface ViteWpConfig {
     omitDefaultAssets?: boolean;
     requiredPlugins?: string[];
     pluginPresets?: string[];
+    routes?: {
+      wordpress?: string[];
+    };
     hooks?: {
       cache?: HookCacheConfig;
     };
@@ -79,6 +82,9 @@ export interface LoadedViteWpConfig {
     omitDefaultAssets: boolean;
     requiredPlugins: string[];
     pluginPresets: string[];
+    routes: {
+      wordpress: string[];
+    };
     hooks: {
       cache: {
         enabled: boolean;
@@ -166,6 +172,9 @@ export async function loadViteWpConfig(root = process.cwd()): Promise<LoadedVite
       omitDefaultAssets: userConfig.wordpress?.omitDefaultAssets ?? true,
       requiredPlugins: userConfig.wordpress?.requiredPlugins ?? [],
       pluginPresets: userConfig.wordpress?.pluginPresets ?? [],
+      routes: {
+        wordpress: userConfig.wordpress?.routes?.wordpress ?? ['/my-account', '/cart', '/checkout'],
+      },
       hooks: {
         cache: normalizeHookCache(userConfig.wordpress?.hooks?.cache),
       },

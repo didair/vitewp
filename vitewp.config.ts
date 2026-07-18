@@ -19,6 +19,9 @@ export default defineConfig({
       primary: 'Primary menu',
       footer: 'Footer menu',
     },
+    routes: {
+      wordpress: ['/my-account', '/cart', '/checkout'],
+    },
   },
   composer: {
     install: true,

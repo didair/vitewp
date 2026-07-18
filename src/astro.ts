@@ -11,7 +11,7 @@ export default function vitewp(_options: ViteWpAstroOptions = {}): AstroIntegrat
   return {
     name: 'vitewp',
     hooks: {
-      'astro:config:setup': ({ command, config, injectRoute, addDevToolbarApp, logger, updateConfig }) => {
+      'astro:config:setup': ({ command, config, injectRoute, addDevToolbarApp, addMiddleware, logger, updateConfig }) => {
         updateConfig({
           vite: {
             resolve: {
@@ -33,6 +33,11 @@ export default function vitewp(_options: ViteWpAstroOptions = {}): AstroIntegrat
             prerender: false,
           });
         }
+
+        addMiddleware({
+          order: 'pre',
+          entrypoint: getRequestContextMiddlewareEntrypoint(),
+        });
 
         if (command === 'dev') {
           addDevToolbarApp({
@@ -65,6 +70,16 @@ function getDefaultRouteEntrypoint() {
   }
 
   return new URL('../runtime/route.astro', import.meta.url);
+}
+
+function getRequestContextMiddlewareEntrypoint() {
+  const sourceEntrypoint = new URL('./request-context-middleware.ts', import.meta.url);
+
+  if (existsSync(fileURLToPath(sourceEntrypoint))) {
+    return sourceEntrypoint;
+  }
+
+  return new URL('./request-context-middleware.js', import.meta.url);
 }
 
 function getDevToolbarEntrypoint() {

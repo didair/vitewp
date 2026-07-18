@@ -40,11 +40,11 @@ export async function startUnifiedProxy(config: LoadedViteWpConfig): Promise<Pro
       return;
     }
 
-    proxyHttpRequest(request, response, selectTarget(request.url ?? '/', phpUrl, astroUrl), publicUrl);
+    proxyHttpRequest(request, response, selectTarget(request.url ?? '/', phpUrl, astroUrl, config), publicUrl);
   });
 
   server.on('upgrade', (request, socket, head) => {
-    proxyUpgrade(request, socket, head, selectTarget(request.url ?? '/', phpUrl, astroUrl), publicUrl);
+    proxyUpgrade(request, socket, head, selectTarget(request.url ?? '/', phpUrl, astroUrl, config), publicUrl);
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -64,15 +64,18 @@ export async function startUnifiedProxy(config: LoadedViteWpConfig): Promise<Pro
   };
 }
 
-function selectTarget(path: string, phpUrl: URL, astroUrl: URL) {
-  return isWordPressRequest(path) ? phpUrl : astroUrl;
+function selectTarget(path: string, phpUrl: URL, astroUrl: URL, config: LoadedViteWpConfig) {
+  return isWordPressRequest(path, config) ? phpUrl : astroUrl;
 }
 
-function isWordPressRequest(path: string) {
-  const pathname = new URL(path, 'http://vitewp.local').pathname;
+function isWordPressRequest(path: string, config: LoadedViteWpConfig) {
+  const url = new URL(path, 'http://vitewp.local');
+  const pathname = url.pathname;
   return wordpressPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
     || wordpressFiles.includes(pathname)
-    || hasPhpPathSegment(pathname);
+    || hasPhpPathSegment(pathname)
+    || url.searchParams.has('wc-ajax')
+    || config.wordpress.routes.wordpress.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
 function hasPhpPathSegment(pathname: string) {

@@ -55,6 +55,7 @@ export async function runDoctorChecks(config: LoadedViteWpConfig, options: { liv
   checks.push(...pluginPresetChecks(config));
   if (live) {
     checks.push(await wordpressHealthCheck(config));
+    checks.push(await wordpressAuthRoutesCheck(config));
   }
 
   printChecks(checks);
@@ -509,6 +510,41 @@ async function wordpressHealthCheck(config: LoadedViteWpConfig): Promise<Check> 
       status: 'warn',
       label: 'WordPress health endpoint',
       detail: `Could not reach ${url}. Start vite-wp dev to run live health checks.`,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function wordpressAuthRoutesCheck(config: LoadedViteWpConfig): Promise<Check> {
+  const url = `${config.wordpress.url.replace(/\/$/, '')}/wp-login.php`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const response = await fetch(url, {
+      redirect: 'manual',
+      signal: controller.signal,
+    });
+
+    if (response.status >= 500 || response.status === 404) {
+      return {
+        status: 'fail',
+        label: 'WordPress auth routes',
+        detail: `${url} returned ${response.status}; login must be served by WordPress/PHP.`,
+      };
+    }
+
+    return {
+      status: 'pass',
+      label: 'WordPress auth routes',
+      detail: '/wp-login.php is served by WordPress.',
+    };
+  } catch {
+    return {
+      status: 'warn',
+      label: 'WordPress auth routes',
+      detail: `Could not reach ${url}. Start vite-wp dev to check login routing.`,
     };
   } finally {
     clearTimeout(timeout);

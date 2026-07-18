@@ -69,6 +69,10 @@ function vitewp_bridge_configured_menus(): array
 }
 
 add_action('init', function () {
+    if (isset($_GET['vitewp_internal_auth'])) {
+        vitewp_bridge_handle_internal_auth();
+    }
+
     if (! isset($_GET['vitewp_internal_hook'])) {
         return;
     }
@@ -187,15 +191,7 @@ add_action('rest_api_init', function () {
 
 function vitewp_bridge_handle_internal_hook(): void
 {
-    $configured_secret = defined('VITEWP_INTERNAL_SECRET') ? (string) VITEWP_INTERNAL_SECRET : '';
-    $request_secret = (string) ($_SERVER['HTTP_X_VITEWP_INTERNAL_SECRET'] ?? '');
-
-    if ($configured_secret === '' || ! hash_equals($configured_secret, $request_secret)) {
-        status_header(403);
-        header('Content-Type: application/json; charset=utf-8');
-        echo wp_json_encode(['message' => 'Forbidden']);
-        exit;
-    }
+    vitewp_bridge_require_internal_request();
 
     $payload = json_decode((string) file_get_contents('php://input'), true);
 
@@ -247,6 +243,138 @@ function vitewp_bridge_handle_internal_hook(): void
         'value' => $filtered,
         'rendered' => is_scalar($filtered) ? (string) $filtered : wp_json_encode($filtered),
     ]);
+}
+
+function vitewp_bridge_handle_internal_auth(): void
+{
+    vitewp_bridge_require_internal_request();
+
+    $action = sanitize_text_field((string) ($_GET['action'] ?? 'wp_rest'));
+    $redirect_to = esc_url_raw((string) ($_GET['redirect_to'] ?? home_url('/')));
+    $user = wp_get_current_user();
+    $logged_in = is_user_logged_in() && $user instanceof WP_User && $user->exists();
+
+    vitewp_bridge_json([
+        'loggedIn' => $logged_in,
+        'user' => $logged_in ? vitewp_bridge_current_user($user) : null,
+        'nonce' => [
+            'action' => $action,
+            'value' => wp_create_nonce($action),
+        ],
+        'restNonce' => wp_create_nonce('wp_rest'),
+        'loginUrl' => wp_login_url($redirect_to),
+        'logoutUrl' => wp_logout_url($redirect_to),
+        'lostPasswordUrl' => wp_lostpassword_url($redirect_to),
+        'registerUrl' => wp_registration_url(),
+        'woocommerce' => vitewp_bridge_woocommerce_auth_context(),
+    ]);
+}
+
+function vitewp_bridge_require_internal_request(): void
+{
+    $configured_secret = defined('VITEWP_INTERNAL_SECRET') ? (string) VITEWP_INTERNAL_SECRET : '';
+    $request_secret = (string) ($_SERVER['HTTP_X_VITEWP_INTERNAL_SECRET'] ?? '');
+
+    if ($configured_secret === '' || ! hash_equals($configured_secret, $request_secret)) {
+        status_header(403);
+        header('Content-Type: application/json; charset=utf-8');
+        echo wp_json_encode(['message' => 'Forbidden']);
+        exit;
+    }
+}
+
+function vitewp_bridge_current_user(WP_User $user): array
+{
+    $capabilities = [];
+
+    foreach ((array) $user->allcaps as $capability => $enabled) {
+        if ($enabled) {
+            $capabilities[] = (string) $capability;
+        }
+    }
+
+    return [
+        'id' => (int) $user->ID,
+        'username' => $user->user_login,
+        'email' => $user->user_email,
+        'name' => $user->display_name,
+        'displayName' => $user->display_name,
+        'firstName' => (string) get_user_meta($user->ID, 'first_name', true),
+        'lastName' => (string) get_user_meta($user->ID, 'last_name', true),
+        'roles' => array_values((array) $user->roles),
+        'capabilities' => $capabilities,
+        'avatarUrls' => vitewp_bridge_avatar_urls((int) $user->ID),
+    ];
+}
+
+function vitewp_bridge_avatar_urls(int $user_id): array
+{
+    return [
+        '24' => get_avatar_url($user_id, ['size' => 24]) ?: '',
+        '48' => get_avatar_url($user_id, ['size' => 48]) ?: '',
+        '96' => get_avatar_url($user_id, ['size' => 96]) ?: '',
+    ];
+}
+
+function vitewp_bridge_woocommerce_auth_context(): ?array
+{
+    if (! class_exists('WooCommerce')) {
+        return null;
+    }
+
+    return [
+        'active' => true,
+        'customer' => vitewp_bridge_woocommerce_customer(),
+        'myAccountUrl' => function_exists('wc_get_page_permalink') ? wc_get_page_permalink('myaccount') : home_url('/my-account/'),
+        'cartUrl' => function_exists('wc_get_cart_url') ? wc_get_cart_url() : home_url('/cart/'),
+        'checkoutUrl' => function_exists('wc_get_checkout_url') ? wc_get_checkout_url() : home_url('/checkout/'),
+        'storeApiNonce' => wp_create_nonce('wc_store_api'),
+    ];
+}
+
+function vitewp_bridge_woocommerce_customer(): ?array
+{
+    $user_id = get_current_user_id();
+
+    if ($user_id <= 0 || ! class_exists('WC_Customer')) {
+        return null;
+    }
+
+    $customer = new WC_Customer($user_id);
+    $user = get_userdata($user_id);
+
+    return [
+        'id' => $user_id,
+        'email' => $customer->get_email(),
+        'firstName' => $customer->get_first_name(),
+        'lastName' => $customer->get_last_name(),
+        'displayName' => $user instanceof WP_User ? $user->display_name : trim($customer->get_first_name() . ' ' . $customer->get_last_name()),
+        'billing' => [
+            'firstName' => $customer->get_billing_first_name(),
+            'lastName' => $customer->get_billing_last_name(),
+            'company' => $customer->get_billing_company(),
+            'address1' => $customer->get_billing_address_1(),
+            'address2' => $customer->get_billing_address_2(),
+            'city' => $customer->get_billing_city(),
+            'postcode' => $customer->get_billing_postcode(),
+            'country' => $customer->get_billing_country(),
+            'state' => $customer->get_billing_state(),
+            'email' => $customer->get_billing_email(),
+            'phone' => $customer->get_billing_phone(),
+        ],
+        'shipping' => [
+            'firstName' => $customer->get_shipping_first_name(),
+            'lastName' => $customer->get_shipping_last_name(),
+            'company' => $customer->get_shipping_company(),
+            'address1' => $customer->get_shipping_address_1(),
+            'address2' => $customer->get_shipping_address_2(),
+            'city' => $customer->get_shipping_city(),
+            'postcode' => $customer->get_shipping_postcode(),
+            'country' => $customer->get_shipping_country(),
+            'state' => $customer->get_shipping_state(),
+            'phone' => method_exists($customer, 'get_shipping_phone') ? $customer->get_shipping_phone() : '',
+        ],
+    ];
 }
 
 function vitewp_bridge_should_omit_default_assets(): bool

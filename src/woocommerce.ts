@@ -1,4 +1,6 @@
 import { getWordPressBaseUrl } from './wordpress/client.js';
+import { getAuthContext, ViteWpAuthRequiredError, type WpWooCommerceCustomer } from './wordpress/auth.js';
+import { getRequestContext, type ViteWpAstroLike } from './wordpress/context.js';
 
 type QueryValue = string | number | boolean | Array<string | number | boolean> | undefined | null;
 
@@ -154,6 +156,35 @@ export interface WooReviewQuery {
   [key: string]: QueryValue;
 }
 
+export type WooCustomer = WpWooCommerceCustomer;
+
+export interface WooCart {
+  items: unknown[];
+  items_count: number;
+  items_weight: number;
+  needs_payment: boolean;
+  needs_shipping: boolean;
+  has_calculated_shipping: boolean;
+  itemsCount?: number;
+  itemsWeight?: number;
+  needsPayment?: boolean;
+  needsShipping?: boolean;
+  hasCalculatedShipping?: boolean;
+  fees: unknown[];
+  totals: Record<string, unknown>;
+  errors: unknown[];
+  payment_requirements: string[];
+  shipping_rates: unknown[];
+  cross_sells: unknown[];
+  paymentRequirements?: string[];
+  shippingRates?: unknown[];
+  coupons: unknown[];
+  crossSells?: unknown[];
+  notices: unknown[];
+  extensions: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 export async function getProducts(query: WooQuery = {}): Promise<WooProduct[]> {
   return getProductCollection(query).then((collection) => collection.items);
 }
@@ -202,6 +233,31 @@ export async function getProductReviews(query: WooReviewQuery = {}): Promise<Woo
   return getStoreJson<WooReview[]>('products/reviews', params);
 }
 
+export async function getCurrentCustomer(input?: ViteWpAstroLike): Promise<WooCustomer | null> {
+  const auth = await getAuthContext(input);
+  return auth.woocommerce?.customer ?? null;
+}
+
+export async function requireCustomer(input?: ViteWpAstroLike): Promise<WooCustomer> {
+  const auth = await getAuthContext(input);
+  const customer = auth.woocommerce?.customer ?? null;
+
+  if (!customer) {
+    throw new ViteWpAuthRequiredError(auth.woocommerce?.myAccountUrl ?? auth.loginUrl);
+  }
+
+  return customer;
+}
+
+export async function getCart(input?: ViteWpAstroLike): Promise<WooCart> {
+  const context = getRequestContext(input);
+  const auth = await getAuthContext(input);
+  return getStoreJson<WooCart>('cart', {}, [], {
+    cookie: context.cookie,
+    nonce: auth.woocommerce?.storeApiNonce,
+  });
+}
+
 export function getWooCommerceStoreApiBase() {
   return `${getWordPressBaseUrl()}/wp-json/wc/store/v1`;
 }
@@ -220,14 +276,26 @@ async function getStoreCollection<T>(path: string, query: Record<string, QueryVa
   };
 }
 
-async function getStoreJson<T>(path: string, query: Record<string, QueryValue> = {}, emptyStatuses: number[] = []): Promise<T> {
-  const { data } = await fetchStoreJson<T>(path, query, emptyStatuses);
+async function getStoreJson<T>(
+  path: string,
+  query: Record<string, QueryValue> = {},
+  emptyStatuses: number[] = [],
+  auth: { cookie?: string; nonce?: string } = {},
+): Promise<T> {
+  const { data } = await fetchStoreJson<T>(path, query, emptyStatuses, auth);
   return data;
 }
 
-async function fetchStoreJson<T>(path: string, query: Record<string, QueryValue> = {}, emptyStatuses: number[] = []) {
+async function fetchStoreJson<T>(
+  path: string,
+  query: Record<string, QueryValue> = {},
+  emptyStatuses: number[] = [],
+  auth: { cookie?: string; nonce?: string } = {},
+) {
   const url = storeUrl(path, query);
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    headers: storeRequestHeaders(auth),
+  });
 
   if (emptyStatuses.includes(response.status)) {
     return { response, data: [] as T };
@@ -241,6 +309,21 @@ async function fetchStoreJson<T>(path: string, query: Record<string, QueryValue>
     response,
     data: await response.json() as T,
   };
+}
+
+function storeRequestHeaders(auth: { cookie?: string; nonce?: string }): HeadersInit {
+  const headers: Record<string, string> = {};
+
+  if (auth.cookie) {
+    headers.cookie = auth.cookie;
+  }
+
+  if (auth.nonce) {
+    headers.nonce = auth.nonce;
+    headers['x-wp-nonce'] = auth.nonce;
+  }
+
+  return headers;
 }
 
 function storeUrl(path: string, query: Record<string, QueryValue>) {
