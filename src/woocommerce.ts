@@ -1,8 +1,9 @@
 import { getWordPressBaseUrl } from './wordpress/client.js';
 import { getAuthContext, ViteWpAuthRequiredError, type WpWooCommerceCustomer } from './wordpress/auth.js';
-import { getRequestContext, type ViteWpAstroLike } from './wordpress/context.js';
+import { getRequestContext, type ViteWpAstroLike, type ViteWpRequestContext } from './wordpress/context.js';
 
 type QueryValue = string | number | boolean | Array<string | number | boolean> | undefined | null;
+type StoreRequestAuth = { cookie?: string; nonce?: string; context?: ViteWpRequestContext };
 
 export interface WooQuery {
   page?: number;
@@ -158,8 +159,45 @@ export interface WooReviewQuery {
 
 export type WooCustomer = WpWooCommerceCustomer;
 
+export interface WooCartItemMeta {
+  key?: string;
+  name?: string;
+  value?: string;
+  display?: string;
+  [key: string]: unknown;
+}
+
+export interface WooCartItemQuantityLimits {
+  minimum: number;
+  maximum: number;
+  multiple_of: number;
+  editable: boolean;
+}
+
+export interface WooCartItem {
+  key: string;
+  id: number;
+  type: string;
+  quantity: number;
+  quantity_limits?: WooCartItemQuantityLimits;
+  name: string;
+  short_description?: string;
+  description?: string;
+  sku?: string;
+  low_stock_remaining?: number | null;
+  images: WooProductImage[];
+  variation: WooCartItemMeta[];
+  item_data: WooCartItemMeta[];
+  prices: Record<string, unknown>;
+  totals: Record<string, unknown>;
+  catalog_visibility?: string;
+  permalink?: string;
+  extensions: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 export interface WooCart {
-  items: unknown[];
+  items: WooCartItem[];
   items_count: number;
   items_weight: number;
   needs_payment: boolean;
@@ -183,6 +221,23 @@ export interface WooCart {
   notices: unknown[];
   extensions: Record<string, unknown>;
   [key: string]: unknown;
+}
+
+export interface WooAddCartItemOptions {
+  id: number;
+  quantity?: number;
+  variation?: WooCartItemMeta[] | Record<string, string | number | boolean>;
+  itemData?: Record<string, unknown>;
+  item_data?: Record<string, unknown>;
+}
+
+export interface WooUpdateCartItemOptions {
+  key: string;
+  quantity: number;
+}
+
+export interface WooRemoveCartItemOptions {
+  key: string;
 }
 
 export async function getProducts(query: WooQuery = {}): Promise<WooProduct[]> {
@@ -250,12 +305,39 @@ export async function requireCustomer(input?: ViteWpAstroLike): Promise<WooCusto
 }
 
 export async function getCart(input?: ViteWpAstroLike): Promise<WooCart> {
-  const context = getRequestContext(input);
-  const auth = await getAuthContext(input);
-  return getStoreJson<WooCart>('cart', {}, [], {
-    cookie: context.cookie,
-    nonce: auth.woocommerce?.storeApiNonce,
-  });
+  return getStoreJson<WooCart>('cart', {}, [], await getCartRequestAuth(input));
+}
+
+export async function addCartItem(options: WooAddCartItemOptions, input?: ViteWpAstroLike): Promise<WooCart> {
+  const body: Record<string, unknown> = {
+    id: options.id,
+  };
+
+  if (options.quantity !== undefined) {
+    body.quantity = options.quantity;
+  }
+
+  if (options.variation !== undefined) {
+    body.variation = options.variation;
+  }
+
+  const itemData = options.item_data ?? options.itemData;
+
+  if (itemData !== undefined) {
+    body.item_data = itemData;
+  }
+
+  return postStoreJson<WooCart>('cart/add-item', body, await getCartRequestAuth(input));
+}
+
+export const addToCart = addCartItem;
+
+export async function updateCartItem(options: WooUpdateCartItemOptions, input?: ViteWpAstroLike): Promise<WooCart> {
+  return postStoreJson<WooCart>('cart/update-item', { ...options }, await getCartRequestAuth(input));
+}
+
+export async function removeCartItem(options: WooRemoveCartItemOptions, input?: ViteWpAstroLike): Promise<WooCart> {
+  return postStoreJson<WooCart>('cart/remove-item', { ...options }, await getCartRequestAuth(input));
 }
 
 export function getWooCommerceStoreApiBase() {
@@ -280,7 +362,7 @@ async function getStoreJson<T>(
   path: string,
   query: Record<string, QueryValue> = {},
   emptyStatuses: number[] = [],
-  auth: { cookie?: string; nonce?: string } = {},
+  auth: StoreRequestAuth = {},
 ): Promise<T> {
   const { data } = await fetchStoreJson<T>(path, query, emptyStatuses, auth);
   return data;
@@ -290,7 +372,7 @@ async function fetchStoreJson<T>(
   path: string,
   query: Record<string, QueryValue> = {},
   emptyStatuses: number[] = [],
-  auth: { cookie?: string; nonce?: string } = {},
+  auth: StoreRequestAuth = {},
 ) {
   const url = storeUrl(path, query);
   const response = await fetch(url, {
@@ -311,7 +393,61 @@ async function fetchStoreJson<T>(
   };
 }
 
-function storeRequestHeaders(auth: { cookie?: string; nonce?: string }): HeadersInit {
+async function postStoreJson<T>(
+  path: string,
+  body: Record<string, unknown>,
+  auth: StoreRequestAuth,
+): Promise<T> {
+  const response = await fetch(storeUrl(path, {}), {
+    method: 'POST',
+    headers: {
+      ...storeRequestHeaders(auth),
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(`WooCommerce Store API request failed: ${response.status} ${response.statusText} ${message}`.trim());
+  }
+
+  forwardStoreResponseCookies(response, auth.context);
+
+  return response.json() as Promise<T>;
+}
+
+async function getCartRequestAuth(input?: ViteWpAstroLike) {
+  const context = getRequestContext(input);
+  const auth = await getAuthContext(input);
+  return {
+    cookie: context.cookie,
+    nonce: auth.woocommerce?.storeApiNonce,
+    context,
+  };
+}
+
+function forwardStoreResponseCookies(response: Response, context?: ViteWpRequestContext) {
+  if (!context) return;
+
+  for (const cookie of getResponseSetCookies(response.headers)) {
+    context.responseHeaders?.append('set-cookie', cookie);
+    context.responseCookies.push(cookie);
+  }
+}
+
+function getResponseSetCookies(headers: Headers): string[] {
+  const withGetSetCookie = headers as Headers & { getSetCookie?: () => string[] };
+
+  if (withGetSetCookie.getSetCookie) {
+    return withGetSetCookie.getSetCookie();
+  }
+
+  const cookie = headers.get('set-cookie');
+  return cookie ? [cookie] : [];
+}
+
+function storeRequestHeaders(auth: StoreRequestAuth): Record<string, string> {
   const headers: Record<string, string> = {};
 
   if (auth.cookie) {

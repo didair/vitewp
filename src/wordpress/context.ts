@@ -2,6 +2,9 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 export interface ViteWpAstroLike {
   request: Request;
+  response?: {
+    headers?: Headers;
+  };
   url?: URL;
   locals?: App.Locals;
   redirect?: (path: string, status?: 300 | 301 | 302 | 303 | 304 | 307 | 308) => Response;
@@ -12,6 +15,8 @@ export interface ViteWpRequestContext {
   url: URL;
   headers: Headers;
   cookie: string;
+  responseHeaders?: Headers;
+  responseCookies: string[];
   locals?: App.Locals;
   redirect?: (path: string, status?: 300 | 301 | 302 | 303 | 304 | 307 | 308) => Response;
   cache: Map<string, unknown>;
@@ -48,6 +53,8 @@ function createRequestContext(astro: ViteWpAstroLike): ViteWpRequestContext {
     url: astro.url ?? new URL(astro.request.url),
     headers,
     cookie: headers.get('cookie') ?? '',
+    responseHeaders: astro.response?.headers,
+    responseCookies: [],
     locals: astro.locals,
     redirect: astro.redirect,
     cache: new Map(),

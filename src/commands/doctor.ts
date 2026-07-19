@@ -41,6 +41,7 @@ export async function runDoctorChecks(config: LoadedViteWpConfig, options: { liv
   checks.push(fileCheck(config.root, `${config.wordpress.docroot}/wp-settings.php`, 'Composer-installed WordPress core'));
   checks.push(fileCheck(config.root, `${config.wordpress.docroot}/wp-config.php`, 'Generated wp-config.php'));
   checks.push(fileCheck(config.root, `${config.wordpress.contentDir}/mu-plugins/vitewp-bridge.php`, 'ViteWP bridge mu-plugin'));
+  checks.push(fileCheck(config.root, `${config.wordpress.contentDir}/mu-plugins/vitewp-bridge/class-bridge.php`, 'ViteWP bridge classes'));
   checks.push(fileCheck(config.root, `${config.wordpress.contentDir}/themes/vitewp/style.css`, 'ViteWP placeholder theme'));
   checks.push(wordPressAssetsCheck(config));
   checks.push(templateDirectoryCheck(config));

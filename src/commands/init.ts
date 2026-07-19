@@ -131,8 +131,12 @@ export type {
 } from 'vite-wp/wordpress';
 
 export type {
+  WooAddCartItemOptions,
   WooAttribute,
   WooCart,
+  WooCartItem,
+  WooCartItemMeta,
+  WooCartItemQuantityLimits,
   WooCollection,
   WooCustomer,
   WooProduct,
@@ -144,8 +148,10 @@ export type {
   WooProductVariation,
   WooProductVariationAttribute,
   WooQuery,
+  WooRemoveCartItemOptions,
   WooReview,
   WooReviewQuery,
+  WooUpdateCartItemOptions,
 } from 'vite-wp/woocommerce';
 
 export type WpPostType = string;
@@ -242,6 +248,7 @@ dist-ssr/
 .astro/
 wordpress/public/
 wordpress/content/mu-plugins/vitewp-bridge.php
+wordpress/content/mu-plugins/vitewp-bridge/
 wordpress/content/themes/vitewp/
 wordpress/content/vitewp-assets/
 wordpress/content/uploads/

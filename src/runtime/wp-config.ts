@@ -122,6 +122,7 @@ function ensureDefaultContentFiles(contentDir: string) {
     join(packageContentDir, 'mu-plugins/vitewp-bridge.php'),
     join(contentDir, 'mu-plugins/vitewp-bridge.php'),
   );
+  copyPackageDirectory(join(packageContentDir, 'mu-plugins/vitewp-bridge'), join(contentDir, 'mu-plugins/vitewp-bridge'));
   copyPackageDirectory(join(packageContentDir, 'themes/vitewp'), join(contentDir, 'themes/vitewp'));
 }
 

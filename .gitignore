@@ -34,6 +34,7 @@ docs/
 .vitewp/
 wordpress/public/
 wordpress/content/mu-plugins/vitewp-bridge.php
+wordpress/content/mu-plugins/vitewp-bridge/
 wordpress/content/themes/vitewp/
 wordpress/content/vitewp-assets/
 wordpress/content/uploads/
