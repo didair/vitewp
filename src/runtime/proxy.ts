@@ -27,6 +27,8 @@ const wordpressFiles = [
   '/favicon.ico',
 ];
 
+const wooCartTokenCookie = 'vitewp_woocommerce_cart_token';
+
 export async function startUnifiedProxy(config: LoadedViteWpConfig): Promise<ProxyServer> {
   const publicUrl = new URL(config.wordpress.url);
   const listenHost = config.dev.proxyHost || publicUrl.hostname;
@@ -220,6 +222,13 @@ function rewriteRequestHeaders(request: IncomingMessage, publicUrl: URL): http.O
     headers['x-forwarded-ssl'] = 'on';
   }
 
+  const pathname = new URL(request.url ?? '/', publicUrl).pathname;
+  const cartToken = readCookie(String(request.headers.cookie ?? ''), wooCartTokenCookie);
+
+  if (cartToken && pathname.startsWith('/wp-json/wc/store/')) {
+    headers['cart-token'] = cartToken;
+  }
+
   return headers;
 }
 
@@ -235,8 +244,59 @@ function rewriteResponseHeaders(
     rewritten.location = location.replace(target.origin, publicUrl.origin);
   }
 
+  const cartToken = firstHeaderValue(headers['cart-token']);
+
+  if (cartToken) {
+    rewritten['set-cookie'] = appendSetCookie(
+      rewritten['set-cookie'],
+      wooCartCookie(cartToken, publicUrl),
+    );
+  }
+
   delete rewritten['content-length'];
   return rewritten;
+}
+
+function wooCartCookie(cartToken: string, publicUrl: URL) {
+  return [
+    `${wooCartTokenCookie}=${encodeURIComponent(cartToken)}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    publicUrl.protocol === 'https:' ? 'Secure' : '',
+  ].filter(Boolean).join('; ');
+}
+
+function firstHeaderValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function appendSetCookie(existing: string | string[] | number | undefined, cookie: string): string[] {
+  if (Array.isArray(existing)) {
+    return [...existing.map(String), cookie];
+  }
+
+  if (existing === undefined) {
+    return [cookie];
+  }
+
+  return [String(existing), cookie];
+}
+
+function readCookie(header: string, name: string): string | undefined {
+  for (const cookie of header.split(';')) {
+    const [cookieName, ...value] = cookie.trim().split('=');
+
+    if (cookieName !== name) continue;
+
+    try {
+      return decodeURIComponent(value.join('='));
+    } catch {
+      return value.join('=');
+    }
+  }
+
+  return undefined;
 }
 
 function rawHeaders(headers: http.OutgoingHttpHeaders) {

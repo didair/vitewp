@@ -1,9 +1,11 @@
 import { getWordPressBaseUrl } from './wordpress/client.js';
 import { getAuthContext, ViteWpAuthRequiredError, type WpWooCommerceCustomer } from './wordpress/auth.js';
-import { getRequestContext, type ViteWpAstroLike, type ViteWpRequestContext } from './wordpress/context.js';
+import { forwardResponseCookies, getRequestContext, type ViteWpAstroLike, type ViteWpRequestContext } from './wordpress/context.js';
 
 type QueryValue = string | number | boolean | Array<string | number | boolean> | undefined | null;
-type StoreRequestAuth = { cookie?: string; nonce?: string; context?: ViteWpRequestContext };
+type StoreRequestAuth = { cookie?: string; nonce?: string; cartToken?: string; context?: ViteWpRequestContext };
+
+const wooCartTokenCookie = 'vitewp_woocommerce_cart_token';
 
 export interface WooQuery {
   page?: number;
@@ -387,6 +389,10 @@ async function fetchStoreJson<T>(
     throw new Error(`WooCommerce Store API request failed: ${response.status} ${response.statusText}`);
   }
 
+  if (auth.context) {
+    persistStoreCartToken(response, auth.context);
+  }
+
   return {
     response,
     data: await response.json() as T,
@@ -412,7 +418,10 @@ async function postStoreJson<T>(
     throw new Error(`WooCommerce Store API request failed: ${response.status} ${response.statusText} ${message}`.trim());
   }
 
-  forwardStoreResponseCookies(response, auth.context);
+  if (auth.context) {
+    forwardResponseCookies(response, auth.context);
+    persistStoreCartToken(response, auth.context);
+  }
 
   return response.json() as Promise<T>;
 }
@@ -420,31 +429,35 @@ async function postStoreJson<T>(
 async function getCartRequestAuth(input?: ViteWpAstroLike) {
   const context = getRequestContext(input);
   const auth = await getAuthContext(input);
+  const cartToken = context.wooCartToken ?? readCookie(context.cookie, wooCartTokenCookie);
+
   return {
     cookie: context.cookie,
-    nonce: auth.woocommerce?.storeApiNonce,
+    nonce: cartToken && !auth.woocommerce?.customer ? undefined : auth.woocommerce?.storeApiNonce,
+    cartToken: !auth.woocommerce?.customer ? cartToken : undefined,
     context,
   };
 }
 
-function forwardStoreResponseCookies(response: Response, context?: ViteWpRequestContext) {
-  if (!context) return;
+function persistStoreCartToken(response: Response, context: ViteWpRequestContext) {
+  const cartToken = response.headers.get('cart-token');
 
-  for (const cookie of getResponseSetCookies(response.headers)) {
-    context.responseHeaders?.append('set-cookie', cookie);
-    context.responseCookies.push(cookie);
-  }
-}
-
-function getResponseSetCookies(headers: Headers): string[] {
-  const withGetSetCookie = headers as Headers & { getSetCookie?: () => string[] };
-
-  if (withGetSetCookie.getSetCookie) {
-    return withGetSetCookie.getSetCookie();
+  if (!cartToken) {
+    return;
   }
 
-  const cookie = headers.get('set-cookie');
-  return cookie ? [cookie] : [];
+  context.wooCartToken = cartToken;
+
+  const cookie = [
+    `${wooCartTokenCookie}=${encodeURIComponent(cartToken)}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    context.url.protocol === 'https:' ? 'Secure' : '',
+  ].filter(Boolean).join('; ');
+
+  context.responseHeaders?.append('set-cookie', cookie);
+  context.responseCookies.push(cookie);
 }
 
 function storeRequestHeaders(auth: StoreRequestAuth): Record<string, string> {
@@ -454,12 +467,30 @@ function storeRequestHeaders(auth: StoreRequestAuth): Record<string, string> {
     headers.cookie = auth.cookie;
   }
 
-  if (auth.nonce) {
+  if (auth.cartToken) {
+    headers['cart-token'] = auth.cartToken;
+  } else if (auth.nonce) {
     headers.nonce = auth.nonce;
     headers['x-wp-nonce'] = auth.nonce;
   }
 
   return headers;
+}
+
+function readCookie(header: string, name: string): string | undefined {
+  for (const cookie of header.split(';')) {
+    const [cookieName, ...value] = cookie.trim().split('=');
+
+    if (cookieName !== name) continue;
+
+    try {
+      return decodeURIComponent(value.join('='));
+    } catch {
+      return value.join('=');
+    }
+  }
+
+  return undefined;
 }
 
 function storeUrl(path: string, query: Record<string, QueryValue>) {

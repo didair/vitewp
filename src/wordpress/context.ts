@@ -15,6 +15,7 @@ export interface ViteWpRequestContext {
   url: URL;
   headers: Headers;
   cookie: string;
+  wooCartToken?: string;
   responseHeaders?: Headers;
   responseCookies: string[];
   locals?: App.Locals;
@@ -29,11 +30,15 @@ export function runWithRequestContext<T>(astro: ViteWpAstroLike, callback: () =>
 }
 
 export function getRequestContext(astro?: ViteWpAstroLike): ViteWpRequestContext {
+  const context = requestContext.getStore();
+
   if (astro) {
+    if (context?.request === astro.request) {
+      return context;
+    }
+
     return createRequestContext(astro);
   }
-
-  const context = requestContext.getStore();
 
   if (!context) {
     throw new Error('No ViteWP request context found. Use this helper during Astro SSR or pass the Astro object explicitly.');
@@ -46,6 +51,13 @@ export function getOptionalRequestContext(): ViteWpRequestContext | null {
   return requestContext.getStore() ?? null;
 }
 
+export function forwardResponseCookies(response: Response, context: ViteWpRequestContext): void {
+  for (const cookie of getResponseSetCookies(response.headers)) {
+    context.responseHeaders?.append('set-cookie', cookie);
+    context.responseCookies.push(cookie);
+  }
+}
+
 function createRequestContext(astro: ViteWpAstroLike): ViteWpRequestContext {
   const headers = astro.request.headers;
   return {
@@ -53,10 +65,38 @@ function createRequestContext(astro: ViteWpAstroLike): ViteWpRequestContext {
     url: astro.url ?? new URL(astro.request.url),
     headers,
     cookie: headers.get('cookie') ?? '',
+    wooCartToken: readCookie(headers.get('cookie') ?? '', 'vitewp_woocommerce_cart_token'),
     responseHeaders: astro.response?.headers,
     responseCookies: [],
     locals: astro.locals,
     redirect: astro.redirect,
     cache: new Map(),
   };
+}
+
+function getResponseSetCookies(headers: Headers): string[] {
+  const withGetSetCookie = headers as Headers & { getSetCookie?: () => string[] };
+
+  if (withGetSetCookie.getSetCookie) {
+    return withGetSetCookie.getSetCookie();
+  }
+
+  const cookie = headers.get('set-cookie');
+  return cookie ? [cookie] : [];
+}
+
+function readCookie(header: string, name: string): string | undefined {
+  for (const cookie of header.split(';')) {
+    const [cookieName, ...value] = cookie.trim().split('=');
+
+    if (cookieName !== name) continue;
+
+    try {
+      return decodeURIComponent(value.join('='));
+    } catch {
+      return value.join('=');
+    }
+  }
+
+  return undefined;
 }

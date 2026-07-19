@@ -1,4 +1,9 @@
-import { getRequestContext, type ViteWpAstroLike, type ViteWpRequestContext } from './context.js';
+import {
+  forwardResponseCookies,
+  getRequestContext,
+  type ViteWpAstroLike,
+  type ViteWpRequestContext,
+} from './context.js';
 import { getWordPressBaseUrl } from './client.js';
 
 export interface WpCurrentUser {
@@ -55,6 +60,32 @@ export interface AuthContextOptions {
   redirectTo?: string;
 }
 
+export interface WpPasswordCredentials {
+  email?: string;
+  username?: string;
+  login?: string;
+  password: string;
+  remember?: boolean;
+  redirectTo?: string;
+}
+
+export interface WpPasswordResetRequest {
+  email?: string;
+  username?: string;
+  login?: string;
+}
+
+export interface WpPasswordReset {
+  login: string;
+  key: string;
+  password: string;
+}
+
+export interface WpAuthMessageResult {
+  ok: true;
+  message: string;
+}
+
 export class ViteWpAuthRequiredError extends Error {
   loginUrl: string;
   response: Response;
@@ -64,6 +95,18 @@ export class ViteWpAuthRequiredError extends Error {
     this.name = 'ViteWpAuthRequiredError';
     this.loginUrl = loginUrl;
     this.response = Response.redirect(loginUrl, 302);
+  }
+}
+
+export class ViteWpAuthActionError extends Error {
+  status: number;
+  code: string;
+
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.name = 'ViteWpAuthActionError';
+    this.status = status;
+    this.code = code;
   }
 }
 
@@ -119,6 +162,65 @@ export async function logoutUrl(input?: ViteWpAstroLike | AuthContextOptions): P
   return getAuthContext(input).then((auth) => auth.logoutUrl);
 }
 
+export async function signInWithPassword(
+  credentials: WpPasswordCredentials,
+  input?: ViteWpAstroLike,
+): Promise<WpAuthContext> {
+  const context = getRequestContext(input);
+  const login = credentials.login ?? credentials.email ?? credentials.username;
+
+  if (!login) {
+    throw new ViteWpAuthActionError(400, 'missing_login', 'Email or username is required.');
+  }
+
+  const auth = await postAuthAction<WpAuthContext>(context, 'login', {
+    login,
+    password: credentials.password,
+    remember: credentials.remember ?? false,
+    redirectTo: credentials.redirectTo ?? context.url.pathname,
+  });
+
+  context.cache.clear();
+  context.cache.set(`wordpress:auth:wp_rest:${credentials.redirectTo ?? context.url.pathname}`, auth);
+  return auth;
+}
+
+export const loginWithPassword = signInWithPassword;
+
+export async function signOut(input?: ViteWpAstroLike): Promise<WpAuthContext> {
+  const context = getRequestContext(input);
+  const auth = await postAuthAction<WpAuthContext>(context, 'logout', {
+    redirectTo: context.url.pathname,
+  });
+
+  context.cache.clear();
+  context.cache.set(`wordpress:auth:wp_rest:${context.url.pathname}`, auth);
+  return auth;
+}
+
+export const logout = signOut;
+
+export async function requestPasswordReset(
+  request: WpPasswordResetRequest,
+  input?: ViteWpAstroLike,
+): Promise<WpAuthMessageResult> {
+  const context = getRequestContext(input);
+  const login = request.login ?? request.email ?? request.username;
+
+  if (!login) {
+    throw new ViteWpAuthActionError(400, 'missing_login', 'Email or username is required.');
+  }
+
+  return postAuthAction<WpAuthMessageResult>(context, 'request_password_reset', { login });
+}
+
+export const sendPasswordResetEmail = requestPasswordReset;
+
+export async function resetPassword(reset: WpPasswordReset, input?: ViteWpAstroLike): Promise<WpAuthMessageResult> {
+  const context = getRequestContext(input);
+  return postAuthAction<WpAuthMessageResult>(context, 'reset_password', { ...reset });
+}
+
 function resolveAuthInput(input: ViteWpAstroLike | AuthContextOptions | undefined, options: AuthContextOptions) {
   if (isAstroLike(input)) {
     return {
@@ -160,6 +262,47 @@ async function fetchAuthContext(context: ViteWpRequestContext, action: string, r
   }
 
   return response.json() as Promise<WpAuthContext>;
+}
+
+async function postAuthAction<T>(context: ViteWpRequestContext, action: string, body: Record<string, unknown>): Promise<T> {
+  const phpUrl = process.env.VITEWP_PHP_URL;
+  const secret = process.env.VITEWP_INTERNAL_SECRET;
+
+  if (!phpUrl || !secret) {
+    throw new Error('WordPress auth helpers are only available during ViteWP SSR. Start the site with `vite-wp dev`.');
+  }
+
+  const response = await fetch(`${phpUrl.replace(/\/$/, '')}/index.php?vitewp_internal_auth_action=1`, {
+    method: 'POST',
+    headers: {
+      ...authRequestHeaders(context, secret),
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ action, ...body }),
+  });
+
+  if (!response.ok) {
+    const payload = await readAuthActionError(response);
+    throw new ViteWpAuthActionError(response.status, payload.code, payload.message);
+  }
+
+  forwardResponseCookies(response, context);
+  return response.json() as Promise<T>;
+}
+
+async function readAuthActionError(response: Response) {
+  try {
+    const payload = await response.json() as { code?: string; message?: string };
+    return {
+      code: payload.code ?? 'auth_action_failed',
+      message: payload.message ?? `WordPress auth action failed: ${response.status} ${response.statusText}`,
+    };
+  } catch {
+    return {
+      code: 'auth_action_failed',
+      message: `WordPress auth action failed: ${response.status} ${response.statusText}`,
+    };
+  }
 }
 
 export function authRequestHeaders(context: ViteWpRequestContext, secret: string): HeadersInit {

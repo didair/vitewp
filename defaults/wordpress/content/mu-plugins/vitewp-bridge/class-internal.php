@@ -4,6 +4,10 @@ final class ViteWP_Bridge_Internal
 {
     public static function handleInternalRequests(): void
     {
+        if (isset($_GET['vitewp_internal_auth_action'])) {
+            self::handleInternalAuthAction();
+        }
+
         if (isset($_GET['vitewp_internal_auth'])) {
             self::handleInternalAuth();
         }
@@ -79,10 +83,125 @@ final class ViteWP_Bridge_Internal
 
         $action = sanitize_text_field((string) ($_GET['action'] ?? 'wp_rest'));
         $redirect_to = esc_url_raw((string) ($_GET['redirect_to'] ?? home_url('/')));
+
+        ViteWP_Bridge_Internal::json(ViteWP_Bridge_Internal::authContext($action, $redirect_to));
+    }
+
+    public static function handleInternalAuthAction(): void
+    {
+
+        ViteWP_Bridge_Internal::requireInternalRequest();
+
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            ViteWP_Bridge_Internal::jsonError(405, 'method_not_allowed', 'Auth actions must use POST.');
+        }
+
+        $payload = json_decode((string) file_get_contents('php://input'), true);
+
+        if (! is_array($payload)) {
+            ViteWP_Bridge_Internal::jsonError(400, 'invalid_json', 'Invalid JSON payload.');
+        }
+
+        $action = sanitize_key((string) ($payload['action'] ?? ''));
+        $redirect_to = esc_url_raw((string) ($payload['redirectTo'] ?? home_url('/')));
+
+        if ($action === 'login') {
+            ViteWP_Bridge_Internal::handlePasswordLogin($payload, $redirect_to);
+        }
+
+        if ($action === 'logout') {
+            wp_logout();
+            ViteWP_Bridge_Internal::json(ViteWP_Bridge_Internal::authContext('wp_rest', $redirect_to));
+        }
+
+        if ($action === 'request_password_reset') {
+            ViteWP_Bridge_Internal::handlePasswordResetRequest($payload);
+        }
+
+        if ($action === 'reset_password') {
+            ViteWP_Bridge_Internal::handlePasswordReset($payload);
+        }
+
+        ViteWP_Bridge_Internal::jsonError(400, 'invalid_action', 'Unknown auth action.');
+    }
+
+    public static function handlePasswordLogin(array $payload, string $redirect_to): void
+    {
+
+        $login = sanitize_text_field((string) ($payload['login'] ?? ''));
+        $password = (string) ($payload['password'] ?? '');
+        $remember = (bool) ($payload['remember'] ?? false);
+
+        if ($login === '' || $password === '') {
+            ViteWP_Bridge_Internal::jsonError(400, 'missing_credentials', 'Email/username and password are required.');
+        }
+
+        $user = wp_signon([
+            'user_login' => $login,
+            'user_password' => $password,
+            'remember' => $remember,
+        ], is_ssl());
+
+        if (is_wp_error($user)) {
+            ViteWP_Bridge_Internal::jsonError(401, $user->get_error_code(), wp_strip_all_tags($user->get_error_message()));
+        }
+
+        ViteWP_Bridge_Internal::json(ViteWP_Bridge_Internal::authContext('wp_rest', $redirect_to));
+    }
+
+    public static function handlePasswordResetRequest(array $payload): void
+    {
+
+        $login = sanitize_text_field((string) ($payload['login'] ?? ''));
+
+        if ($login === '') {
+            ViteWP_Bridge_Internal::jsonError(400, 'missing_login', 'Email or username is required.');
+        }
+
+        $result = retrieve_password($login);
+
+        if (is_wp_error($result)) {
+            ViteWP_Bridge_Internal::jsonError(400, $result->get_error_code(), wp_strip_all_tags($result->get_error_message()));
+        }
+
+        ViteWP_Bridge_Internal::json([
+            'ok' => true,
+            'message' => 'Password reset email sent.',
+        ]);
+    }
+
+    public static function handlePasswordReset(array $payload): void
+    {
+
+        $login = sanitize_text_field((string) ($payload['login'] ?? ''));
+        $key = sanitize_text_field((string) ($payload['key'] ?? ''));
+        $password = (string) ($payload['password'] ?? '');
+
+        if ($login === '' || $key === '' || $password === '') {
+            ViteWP_Bridge_Internal::jsonError(400, 'missing_reset_fields', 'Login, reset key, and new password are required.');
+        }
+
+        $user = check_password_reset_key($key, $login);
+
+        if (is_wp_error($user)) {
+            ViteWP_Bridge_Internal::jsonError(400, $user->get_error_code(), wp_strip_all_tags($user->get_error_message()));
+        }
+
+        reset_password($user, $password);
+
+        ViteWP_Bridge_Internal::json([
+            'ok' => true,
+            'message' => 'Password reset.',
+        ]);
+    }
+
+    public static function authContext(string $action, string $redirect_to): array
+    {
+
         $user = wp_get_current_user();
         $logged_in = is_user_logged_in() && $user instanceof WP_User && $user->exists();
 
-        ViteWP_Bridge_Internal::json([
+        return [
             'loggedIn' => $logged_in,
             'user' => $logged_in ? ViteWP_Bridge_Internal::currentUser($user) : null,
             'nonce' => [
@@ -95,7 +214,7 @@ final class ViteWP_Bridge_Internal
             'lostPasswordUrl' => wp_lostpassword_url($redirect_to),
             'registerUrl' => wp_registration_url(),
             'woocommerce' => ViteWP_Bridge_Internal::woocommerceAuthContext(),
-        ]);
+        ];
     }
 
     public static function requireInternalRequest(): void
@@ -307,6 +426,17 @@ final class ViteWP_Bridge_Internal
         header('Content-Type: application/json; charset=utf-8');
         echo wp_json_encode($payload);
         exit;
+    }
+
+    public static function jsonError(int $status, string $code, string $message): void
+    {
+
+        status_header($status);
+        ViteWP_Bridge_Internal::json([
+            'ok' => false,
+            'code' => $code,
+            'message' => $message,
+        ]);
     }
 
 }
