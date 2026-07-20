@@ -9,7 +9,8 @@ final class ViteWP_Bridge_Internal
         }
 
         if (isset($_GET['vitewp_internal_woocommerce'])) {
-            self::handleInternalWooCommerce();
+            add_action('wp_loaded', [self::class, 'handleInternalWooCommerce'], 0);
+            return;
         }
 
         if (isset($_GET['vitewp_internal_auth'])) {
