@@ -36,14 +36,34 @@ export interface WpAuthContext {
   woocommerce?: WpWooCommerceAuthContext | null;
 }
 
+export interface WpWooCommerceCustomerAddress {
+  firstName?: string;
+  lastName?: string;
+  company?: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  postcode?: string;
+  country?: string;
+  state?: string;
+  email?: string;
+  phone?: string;
+  [key: string]: unknown;
+}
+
 export interface WpWooCommerceCustomer {
   id: number;
+  username?: string;
   email: string;
   firstName: string;
   lastName: string;
   displayName: string;
-  billing: Record<string, unknown>;
-  shipping: Record<string, unknown>;
+  dateCreated?: string | null;
+  dateModified?: string | null;
+  isPayingCustomer?: boolean;
+  avatarUrl?: string;
+  billing: WpWooCommerceCustomerAddress;
+  shipping: WpWooCommerceCustomerAddress;
 }
 
 export interface WpWooCommerceAuthContext {

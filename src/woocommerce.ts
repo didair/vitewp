@@ -1,5 +1,11 @@
 import { getWordPressBaseUrl } from './wordpress/client.js';
-import { getAuthContext, ViteWpAuthRequiredError, type WpWooCommerceCustomer } from './wordpress/auth.js';
+import {
+  authRequestHeaders,
+  getAuthContext,
+  ViteWpAuthActionError,
+  ViteWpAuthRequiredError,
+  type WpWooCommerceCustomer,
+} from './wordpress/auth.js';
 import { forwardResponseCookies, getRequestContext, type ViteWpAstroLike, type ViteWpRequestContext } from './wordpress/context.js';
 
 type QueryValue = string | number | boolean | Array<string | number | boolean> | undefined | null;
@@ -242,6 +248,98 @@ export interface WooRemoveCartItemOptions {
   key: string;
 }
 
+export interface WooCustomerAddress {
+  firstName?: string;
+  lastName?: string;
+  company?: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  postcode?: string;
+  country?: string;
+  state?: string;
+  email?: string;
+  phone?: string;
+  [key: string]: unknown;
+}
+
+export interface WooUpdateCustomerInput {
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  displayName?: string;
+  billing?: WooCustomerAddress;
+  shipping?: WooCustomerAddress;
+}
+
+export interface WooOrderQuery {
+  page?: number;
+  perPage?: number;
+  status?: string | string[];
+  order?: 'asc' | 'desc';
+  orderby?: string;
+}
+
+export interface WooOrderLineItem {
+  id: number;
+  productId: number;
+  variationId: number;
+  name: string;
+  quantity: number;
+  subtotal: string;
+  total: string;
+  sku: string;
+  permalink: string;
+  image: WooProductImage | null;
+  meta: Record<string, unknown>[];
+}
+
+export interface WooOrder {
+  id: number;
+  number: string;
+  status: string;
+  currency: string;
+  dateCreated: string | null;
+  dateModified: string | null;
+  total: string;
+  subtotal: string;
+  discountTotal: string;
+  shippingTotal: string;
+  paymentMethod: string;
+  paymentMethodTitle: string;
+  customerNote: string;
+  billing: WooCustomerAddress;
+  shipping: WooCustomerAddress;
+  lineItems: WooOrderLineItem[];
+}
+
+export interface WooCustomerReviewQuery {
+  page?: number;
+  perPage?: number;
+  productId?: number;
+  status?: string;
+}
+
+export interface WooCustomerReview {
+  id: number;
+  productId: number;
+  productName: string;
+  productPermalink: string;
+  reviewer: string;
+  review: string;
+  rating: number;
+  status: string;
+  verified: boolean;
+  dateCreated: string;
+}
+
+export interface WooCustomerReviewInput {
+  id?: number;
+  productId: number;
+  review: string;
+  rating: number;
+}
+
 export async function getProducts(query: WooQuery = {}): Promise<WooProduct[]> {
   return getProductCollection(query).then((collection) => collection.items);
 }
@@ -291,20 +389,43 @@ export async function getProductReviews(query: WooReviewQuery = {}): Promise<Woo
 }
 
 export async function getCurrentCustomer(input?: ViteWpAstroLike): Promise<WooCustomer | null> {
-  const auth = await getAuthContext(input);
-  return auth.woocommerce?.customer ?? null;
+  return postWooCommerceAccountJson<WooCustomer | null>('customer', {}, input);
+}
+
+export async function updateCurrentCustomer(update: WooUpdateCustomerInput, input?: ViteWpAstroLike): Promise<WooCustomer> {
+  return postWooCommerceAccountJson<WooCustomer>('update_customer', { ...update }, input);
 }
 
 export async function requireCustomer(input?: ViteWpAstroLike): Promise<WooCustomer> {
-  const auth = await getAuthContext(input);
-  const customer = auth.woocommerce?.customer ?? null;
+  const customer = await getCurrentCustomer(input);
 
   if (!customer) {
+    const auth = await getAuthContext(input);
     throw new ViteWpAuthRequiredError(auth.woocommerce?.myAccountUrl ?? auth.loginUrl);
   }
 
   return customer;
 }
+
+export async function getCustomerOrders(query: WooOrderQuery = {}, input?: ViteWpAstroLike): Promise<WooOrder[]> {
+  return postWooCommerceAccountJson<WooOrder[]>('orders', { ...query }, input);
+}
+
+export async function getCurrentCustomerReviews(
+  query: WooCustomerReviewQuery = {},
+  input?: ViteWpAstroLike,
+): Promise<WooCustomerReview[]> {
+  return postWooCommerceAccountJson<WooCustomerReview[]>('reviews', { ...query }, input);
+}
+
+export async function createOrUpdateCurrentCustomerReview(
+  review: WooCustomerReviewInput,
+  input?: ViteWpAstroLike,
+): Promise<WooCustomerReview> {
+  return postWooCommerceAccountJson<WooCustomerReview>('upsert_review', { ...review }, input);
+}
+
+export const upsertCurrentCustomerReview = createOrUpdateCurrentCustomerReview;
 
 export async function getCart(input?: ViteWpAstroLike): Promise<WooCart> {
   return getStoreJson<WooCart>('cart', {}, [], await getCartRequestAuth(input));
@@ -344,6 +465,52 @@ export async function removeCartItem(options: WooRemoveCartItemOptions, input?: 
 
 export function getWooCommerceStoreApiBase() {
   return `${getWordPressBaseUrl()}/wp-json/wc/store/v1`;
+}
+
+async function postWooCommerceAccountJson<T>(
+  action: string,
+  body: Record<string, unknown>,
+  input?: ViteWpAstroLike,
+): Promise<T> {
+  const context = getRequestContext(input);
+  const phpUrl = process.env.VITEWP_PHP_URL;
+  const secret = process.env.VITEWP_INTERNAL_SECRET;
+
+  if (!phpUrl || !secret) {
+    throw new Error('WooCommerce account helpers are only available during ViteWP SSR. Start the site with `vite-wp dev`.');
+  }
+
+  const response = await fetch(`${phpUrl.replace(/\/$/, '')}/index.php?vitewp_internal_woocommerce=1`, {
+    method: 'POST',
+    headers: {
+      ...authRequestHeaders(context, secret),
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ action, ...body }),
+  });
+
+  if (!response.ok) {
+    const error = await readWooCommerceAccountError(response);
+    throw new ViteWpAuthActionError(response.status, error.code, error.message);
+  }
+
+  forwardResponseCookies(response, context);
+  return response.json() as Promise<T>;
+}
+
+async function readWooCommerceAccountError(response: Response) {
+  try {
+    const payload = await response.json() as { code?: string; message?: string };
+    return {
+      code: payload.code ?? 'woocommerce_account_failed',
+      message: payload.message ?? `WooCommerce account request failed: ${response.status} ${response.statusText}`,
+    };
+  } catch {
+    return {
+      code: 'woocommerce_account_failed',
+      message: `WooCommerce account request failed: ${response.status} ${response.statusText}`,
+    };
+  }
 }
 
 async function getStoreCollection<T>(path: string, query: Record<string, QueryValue>): Promise<WooCollection<T>> {

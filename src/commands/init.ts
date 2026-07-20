@@ -132,6 +132,7 @@ export type {
   WpCurrentUser,
   WpWooCommerceAuthContext,
   WpWooCommerceCustomer,
+  WpWooCommerceCustomerAddress,
   ViteWpRequestContext,
   WpTerm,
 } from 'vite-wp/wordpress';
@@ -145,6 +146,13 @@ export type {
   WooCartItemQuantityLimits,
   WooCollection,
   WooCustomer,
+  WooCustomerAddress,
+  WooCustomerReview,
+  WooCustomerReviewInput,
+  WooCustomerReviewQuery,
+  WooOrder,
+  WooOrderLineItem,
+  WooOrderQuery,
   WooProduct,
   WooProductAttribute,
   WooProductBrand,
@@ -158,6 +166,7 @@ export type {
   WooReview,
   WooReviewQuery,
   WooUpdateCartItemOptions,
+  WooUpdateCustomerInput,
 } from 'vite-wp/woocommerce';
 
 export type WpPostType = string;
