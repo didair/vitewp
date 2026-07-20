@@ -75,14 +75,60 @@ function createRequestContext(astro: ViteWpAstroLike): ViteWpRequestContext {
 }
 
 function getResponseSetCookies(headers: Headers): string[] {
-  const withGetSetCookie = headers as Headers & { getSetCookie?: () => string[] };
+  const withCookieHelpers = headers as Headers & {
+    getSetCookie?: () => string[];
+    raw?: () => Record<string, string[] | undefined>;
+  };
 
-  if (withGetSetCookie.getSetCookie) {
-    return withGetSetCookie.getSetCookie();
+  if (withCookieHelpers.getSetCookie) {
+    const cookies = withCookieHelpers.getSetCookie();
+    if (cookies.length > 0) return cookies;
+  }
+
+  const rawCookies = withCookieHelpers.raw?.()['set-cookie'];
+
+  if (rawCookies?.length) {
+    return rawCookies;
   }
 
   const cookie = headers.get('set-cookie');
-  return cookie ? [cookie] : [];
+  return cookie ? splitCombinedSetCookieHeader(cookie) : [];
+}
+
+function splitCombinedSetCookieHeader(header: string): string[] {
+  const cookies: string[] = [];
+  let start = 0;
+  let inExpires = false;
+
+  for (let index = 0; index < header.length; index++) {
+    const char = header[index];
+
+    if (char === ',') {
+      if (looksLikeCookieStart(header.slice(index + 1))) {
+        cookies.push(header.slice(start, index).trim());
+        start = index + 1;
+        inExpires = false;
+      }
+      continue;
+    }
+
+    if (char === ';') {
+      inExpires = false;
+      continue;
+    }
+
+    if (!inExpires && header.slice(index, index + 8).toLowerCase() === 'expires=') {
+      inExpires = true;
+      index += 7;
+    }
+  }
+
+  cookies.push(header.slice(start).trim());
+  return cookies.filter(Boolean);
+}
+
+function looksLikeCookieStart(value: string): boolean {
+  return /^\s*[^=;,\s]+=/.test(value);
 }
 
 function readCookie(header: string, name: string): string | undefined {

@@ -114,6 +114,10 @@ final class ViteWP_Bridge_Internal
             ViteWP_Bridge_Internal::json(ViteWP_Bridge_Internal::authContext('wp_rest', $redirect_to));
         }
 
+        if ($action === 'register') {
+            ViteWP_Bridge_Internal::handleUserRegistration($payload, $redirect_to);
+        }
+
         if ($action === 'request_password_reset') {
             ViteWP_Bridge_Internal::handlePasswordResetRequest($payload);
         }
@@ -146,7 +150,121 @@ final class ViteWP_Bridge_Internal
             ViteWP_Bridge_Internal::jsonError(401, $user->get_error_code(), wp_strip_all_tags($user->get_error_message()));
         }
 
+        wp_set_current_user((int) $user->ID);
         ViteWP_Bridge_Internal::json(ViteWP_Bridge_Internal::authContext('wp_rest', $redirect_to));
+    }
+
+    public static function handleUserRegistration(array $payload, string $redirect_to): void
+    {
+
+        if (! ViteWP_Bridge_Internal::registrationEnabled()) {
+            ViteWP_Bridge_Internal::jsonError(403, 'registration_disabled', 'User registration is disabled.');
+        }
+
+        $email = sanitize_email((string) ($payload['email'] ?? ''));
+        $password = (string) ($payload['password'] ?? '');
+        $username = sanitize_user((string) ($payload['username'] ?? ''), true);
+        $first_name = sanitize_text_field((string) ($payload['firstName'] ?? ''));
+        $last_name = sanitize_text_field((string) ($payload['lastName'] ?? ''));
+        $display_name = sanitize_text_field((string) ($payload['displayName'] ?? ''));
+        $remember = (bool) ($payload['remember'] ?? false);
+        $sign_in = (bool) ($payload['signIn'] ?? true);
+
+        if ($email === '' || ! is_email($email)) {
+            ViteWP_Bridge_Internal::jsonError(400, 'invalid_email', 'A valid email address is required.');
+        }
+
+        if (email_exists($email)) {
+            ViteWP_Bridge_Internal::jsonError(409, 'email_exists', 'An account with this email already exists.');
+        }
+
+        if ($password === '') {
+            ViteWP_Bridge_Internal::jsonError(400, 'missing_password', 'Password is required.');
+        }
+
+        if ($username === '') {
+            $username = ViteWP_Bridge_Internal::uniqueUsernameFromEmail($email);
+        } elseif (! validate_username($username)) {
+            ViteWP_Bridge_Internal::jsonError(400, 'invalid_username', 'Username is invalid.');
+        } elseif (username_exists($username)) {
+            ViteWP_Bridge_Internal::jsonError(409, 'username_exists', 'An account with this username already exists.');
+        }
+
+        $user_id = ViteWP_Bridge_Internal::createUser($email, $username, $password);
+
+        if (is_wp_error($user_id)) {
+            ViteWP_Bridge_Internal::jsonError(400, $user_id->get_error_code(), wp_strip_all_tags($user_id->get_error_message()));
+        }
+
+        wp_update_user(array_filter([
+            'ID' => (int) $user_id,
+            'first_name' => $first_name,
+            'last_name' => $last_name,
+            'display_name' => $display_name,
+        ], static fn ($value) => $value !== ''));
+
+        $user = get_userdata((int) $user_id);
+
+        if (! $user instanceof WP_User) {
+            ViteWP_Bridge_Internal::jsonError(500, 'user_not_found', 'The user was created but could not be loaded.');
+        }
+
+        if ($sign_in) {
+            wp_set_current_user((int) $user_id);
+            wp_set_auth_cookie((int) $user_id, $remember, is_ssl());
+            do_action('wp_login', $user->user_login, $user);
+        }
+
+        ViteWP_Bridge_Internal::json([
+            'ok' => true,
+            'user' => ViteWP_Bridge_Internal::currentUser($user),
+            'auth' => ViteWP_Bridge_Internal::authContext('wp_rest', $redirect_to),
+        ]);
+    }
+
+    public static function registrationEnabled(): bool
+    {
+
+        if ((bool) get_option('users_can_register')) {
+            return true;
+        }
+
+        return class_exists('WooCommerce') && get_option('woocommerce_enable_myaccount_registration') === 'yes';
+    }
+
+    public static function uniqueUsernameFromEmail(string $email): string
+    {
+
+        $email_parts = explode('@', $email);
+        $base = sanitize_user((string) ($email_parts[0] ?? ''), true);
+
+        if ($base === '') {
+            $base = 'user';
+        }
+
+        $username = $base;
+        $suffix = 2;
+
+        while (username_exists($username)) {
+            $username = $base . $suffix;
+            $suffix++;
+        }
+
+        return $username;
+    }
+
+    public static function createUser(string $email, string $username, string $password): int|WP_Error
+    {
+
+        if (function_exists('wc_create_new_customer')) {
+            return wc_create_new_customer($email, $username, $password);
+        }
+
+        return wp_insert_user([
+            'user_login' => $username,
+            'user_email' => $email,
+            'user_pass' => $password,
+        ]);
     }
 
     public static function handlePasswordResetRequest(array $payload): void

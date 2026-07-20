@@ -118,6 +118,8 @@ export type {
   WpPasswordCredentials,
   WpPasswordReset,
   WpPasswordResetRequest,
+  WpUserRegistration,
+  WpUserRegistrationResult,
   WpPostCollectionFilter,
   WpPostEntryFilter,
   WpPostTypeLoaderOptions,

@@ -81,6 +81,24 @@ export interface WpPasswordReset {
   password: string;
 }
 
+export interface WpUserRegistration {
+  email: string;
+  password: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  displayName?: string;
+  remember?: boolean;
+  signIn?: boolean;
+  redirectTo?: string;
+}
+
+export interface WpUserRegistrationResult {
+  ok: true;
+  user: WpCurrentUser;
+  auth: WpAuthContext;
+}
+
 export interface WpAuthMessageResult {
   ok: true;
   message: string;
@@ -186,6 +204,24 @@ export async function signInWithPassword(
 }
 
 export const loginWithPassword = signInWithPassword;
+
+export async function registerUser(
+  registration: WpUserRegistration,
+  input?: ViteWpAstroLike,
+): Promise<WpUserRegistrationResult> {
+  const context = getRequestContext(input);
+  const result = await postAuthAction<WpUserRegistrationResult>(context, 'register', {
+    ...registration,
+    signIn: registration.signIn ?? true,
+    redirectTo: registration.redirectTo ?? context.url.pathname,
+  });
+
+  context.cache.clear();
+  context.cache.set(`wordpress:auth:wp_rest:${registration.redirectTo ?? context.url.pathname}`, result.auth);
+  return result;
+}
+
+export const registerWithPassword = registerUser;
 
 export async function signOut(input?: ViteWpAstroLike): Promise<WpAuthContext> {
   const context = getRequestContext(input);
